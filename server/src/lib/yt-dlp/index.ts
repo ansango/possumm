@@ -1,7 +1,7 @@
 const common = [
   "yt-dlp",
   "--js-runtime",
-  "bun", // Solución al error de JS
+  "bun",
   "--no-warnings",
   "--cookies-from-browser",
   "firefox",
@@ -33,13 +33,13 @@ export const bandcamp = [
 
 export const ytmusic = [
   ...common,
-
+  "--replace-in-metadata", "album_artist", "Various Artists", "Varios Artistas",
   "--replace-in-metadata", "uploader", " - Topic$", "",
   "--replace-in-metadata", "artist", " - Topic$", "",
-
+  "--replace-in-metadata", "album_artist", " - Topic$", "",
+  "--parse-metadata", "%(album_artist|Varios Artistas)s:%(album_artist)s",
   "--parse-metadata", "%(playlist_index|track_number)s:%(track_number)s",
   "--parse-metadata", "%(release_year,upload_date>%Y)s:%(meta_date)s",
-  
-  "-o", "thumbnail:%(uploader|Unknown)s/%(album|Unknown)s/cover.%(ext)s",
-  "-o", "%(uploader|Unknown)s/%(album|Unknown)s/%(playlist_index|01)02d %(title)s.%(ext)s",
+  "-o", "thumbnail:%(album_artist|Varios Artistas)s/%(album|Unknown)s/cover.%(ext)s",
+  "-o", "%(album_artist|Varios Artistas)s/%(album|Unknown)s/%(playlist_index|1)02d %(title)s.%(ext)s",
 ];
