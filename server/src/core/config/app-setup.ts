@@ -4,12 +4,13 @@ import { log } from "@/lib/logger";
 import { createDownloadHandlers } from "@/router/download/handlers";
 import { createDownloadRouter } from "@/router/download/routes";
 import { createSSEHandler } from "@/router/download/sse";
+import type { PinoLogger } from "hono-pino";
 
 
 
 // Create app dependencies
 const config = getDefaultConfig();
-const dependencies = createAppDependencies(config, log);
+const dependencies = createAppDependencies(config, log as unknown as PinoLogger);
 
 // Create handlers
 const handlers = createDownloadHandlers({
