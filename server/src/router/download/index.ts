@@ -2,7 +2,6 @@ import * as downloadHandlers from "./handlers";
 import * as downloadRoutes from "./routes";
 import { createRouter } from "@/server";
 import { dependencies } from "@/core/config/app-setup";
-import { createSSEHandler } from "./sse";
 
 // Create handlers with use cases
 const handlers = downloadHandlers.createDownloadHandlers({
@@ -15,9 +14,6 @@ const handlers = downloadHandlers.createDownloadHandlers({
   getMediaDetails: dependencies.useCases.getMediaDetails,
   updateMediaMetadata: dependencies.useCases.updateMediaMetadata,
 });
-
-// Create SSE handler
-const sseHandler = createSSEHandler(dependencies.eventEmitter);
 
 // Create router
 const router = createRouter()
@@ -62,9 +58,6 @@ const router = createRouter()
     handlers.updateMedia,
     downloadHandlers.downloadValidationHook
   );
-
-// Add SSE route (not using OpenAPI as it's a streaming endpoint)
-router.get("/events", sseHandler);
 
 export default router;
 

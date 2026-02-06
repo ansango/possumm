@@ -69,8 +69,9 @@ export function createSSEHandler(eventEmitter: DownloadEventEmitter) {
         });
       });
 
-      // Keep connection open
-      await stream.sleep(Number.MAX_SAFE_INTEGER);
+      // Keep connection open indefinitely
+      // Using a promise that never resolves to keep the stream alive
+      await new Promise(() => {});
     });
   };
 }

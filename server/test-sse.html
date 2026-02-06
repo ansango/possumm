@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SSE Test - Download Events</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 { color: #4ec9b0; }
+        .controls {
+            margin: 20px 0;
+            display: flex;
+            gap: 10px;
+        }
+        button {
+            padding: 10px 20px;
+            background: #0e639c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #1177bb; }
+        button:disabled { background: #666; cursor: not-allowed; }
+        .status {
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+        .status.connected { background: #0e639c; }
+        .status.disconnected { background: #f48771; }
+        .events {
+            margin-top: 20px;
+        }
+        .event {
+            background: #252526;
+            border-left: 3px solid #0e639c;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 4px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+        }
+        .event-type {
+            color: #4ec9b0;
+            font-weight: bold;
+            margin-bottom: 5px;
+        }
+        .event-data {
+            color: #ce9178;
+            margin-left: 10px;
+        }
+        .event-time {
+            color: #858585;
+            font-size: 11px;
+        }
+        .event.download\\:enqueued { border-left-color: #4ec9b0; }
+        .event.download\\:started { border-left-color: #569cd6; }
+        .event.download\\:progress { border-left-color: #dcdcaa; }
+        .event.download\\:completed { border-left-color: #4fc1ff; }
+        .event.download\\:failed { border-left-color: #f48771; }
+        .event.download\\:cancelled { border-left-color: #858585; }
+        .event.download\\:stalled { border-left-color: #ce9178; }
+        .clear-btn {
+            background: #c586c0;
+        }
+        .clear-btn:hover {
+            background: #d7a1d7;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎵 SSE Test - Download Events</h1>
+    
+    <div class="controls">
+        <button id="connectBtn" onclick="connect()">Connect</button>
+        <button id="disconnectBtn" onclick="disconnect()" disabled>Disconnect</button>
+        <button class="clear-btn" onclick="clearEvents()">Clear Events</button>
+    </div>
+
+    <div id="status" class="status disconnected">Disconnected</div>
+    
+    <div class="events">
+        <h2>Events Log:</h2>
+        <div id="eventsList"></div>
+    </div>
+
+    <script>
+        let eventSource = null;
+        const eventTypes = [
+            'download:enqueued',
+            'download:started', 
+            'download:progress',
+            'download:completed',
+            'download:failed',
+            'download:cancelled',
+            'download:stalled',
+            'storage:low'
+        ];
+
+        function connect() {
+            if (eventSource) {
+                console.log('Already connected');
+                return;
+            }
+
+            const url = 'http://localhost:3000/api/events';
+            console.log('Connecting to SSE:', url);
+            
+            eventSource = new EventSource(url);
+            
+            // Connection opened
+            eventSource.onopen = () => {
+                console.log('SSE Connection opened');
+                updateStatus(true);
+                addEvent('system', { message: 'Connected to SSE endpoint' });
+            };
+
+            // Listen to all event types
+            eventTypes.forEach(type => {
+                eventSource.addEventListener(type, (e) => {
+                    console.log(`Event [${type}]:`, e.data);
+                    try {
+                        const data = JSON.parse(e.data);
+                        addEvent(type, data, e.lastEventId);
+                    } catch (error) {
+                        console.error('Failed to parse event data:', error);
+                    }
+                });
+            });
+
+            // Handle errors
+            eventSource.onerror = (error) => {
+                console.error('SSE Error:', error);
+                if (eventSource.readyState === EventSource.CLOSED) {
+                    addEvent('system', { message: 'Connection closed' });
+                    updateStatus(false);
+                } else {
+                    addEvent('system', { message: 'Connection error - reconnecting...' });
+                }
+            };
+        }
+
+        function disconnect() {
+            if (eventSource) {
+                eventSource.close();
+                eventSource = null;
+                updateStatus(false);
+                addEvent('system', { message: 'Disconnected by user' });
+            }
+        }
+
+        function updateStatus(connected) {
+            const status = document.getElementById('status');
+            const connectBtn = document.getElementById('connectBtn');
+            const disconnectBtn = document.getElementById('disconnectBtn');
+            
+            if (connected) {
+                status.textContent = 'Connected';
+                status.className = 'status connected';
+                connectBtn.disabled = true;
+                disconnectBtn.disabled = false;
+            } else {
+                status.textContent = 'Disconnected';
+                status.className = 'status disconnected';
+                connectBtn.disabled = false;
+                disconnectBtn.disabled = true;
+            }
+        }
+
+        function addEvent(type, data, eventId = null) {
+            const eventsList = document.getElementById('eventsList');
+            const eventDiv = document.createElement('div');
+            eventDiv.className = `event ${type}`;
+            
+            const time = new Date().toLocaleTimeString();
+            const idInfo = eventId ? ` [ID: ${eventId}]` : '';
+            
+            eventDiv.innerHTML = `
+                <div class="event-type">${type}${idInfo}</div>
+                <div class="event-data">${JSON.stringify(data, null, 2)}</div>
+                <div class="event-time">${time}</div>
+            `;
+            
+            eventsList.insertBefore(eventDiv, eventsList.firstChild);
+            
+            // Keep only last 50 events
+            while (eventsList.children.length > 50) {
+                eventsList.removeChild(eventsList.lastChild);
+            }
+        }
+
+        function clearEvents() {
+            document.getElementById('eventsList').innerHTML = '';
+        }
+
+        // Auto-connect on page load
+        window.onload = () => {
+            connect();
+        };
+
+        // Cleanup on page unload
+        window.onbeforeunload = () => {
+            disconnect();
+        };
+    </script>
+</body>
+</html>

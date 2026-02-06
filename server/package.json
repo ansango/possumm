@@ -3,7 +3,8 @@
   "description": "Possumm server application",
   "version": "0.1.0",
   "scripts": {
-    "dev": "bun run --hot src/index.ts"
+    "dev": "bun run --hot src/index.ts",
+    "test:sse": "bunx serve . -p 8080"
   },
   "dependencies": {
     "@hono/zod-openapi": "^1.2.1",
