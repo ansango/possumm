@@ -1,7 +1,6 @@
+import { log } from "@/lib/logger";
 import { cache } from "./index";
-import pino from "pino";
 
-const log = pino({ level: "info" });
 const DEFAULT_TTL = 10 * 60 * 1000; // 10 minutes
 
 /**

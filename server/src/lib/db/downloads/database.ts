@@ -1,5 +1,4 @@
 import { Database } from "bun:sqlite";
-import pino from "pino";
 import { mkdirSync, existsSync } from "fs";
 import { dirname, resolve } from "path";
 import {
@@ -14,8 +13,8 @@ import {
   createIndexDownloadsNormalizedUrlStatus,
   createIndexDownloadsStatusStartedAt,
 } from "./queries";
+import { log } from "@/lib/logger";
 
-const log = pino({ level: "info" });
 const DB_PATH = "./data/.downloads.db";
 
 export class DownloadsDatabase {

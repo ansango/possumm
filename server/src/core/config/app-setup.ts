@@ -1,17 +1,15 @@
-import { Context, Hono } from "hono";
-import { pinoLogger } from "hono-pino";
-import pino from "pino";
+
 import { createAppDependencies, getDefaultConfig } from "@/core/config/dependencies";
+import { log } from "@/lib/logger";
 import { createDownloadHandlers } from "@/router/download/handlers";
 import { createDownloadRouter } from "@/router/download/routes";
 import { createSSEHandler } from "@/router/download/sse";
 
-// Create logger
-const logger = pino({ level: process.env.LOG_LEVEL || "info" });
+
 
 // Create app dependencies
 const config = getDefaultConfig();
-const dependencies = createAppDependencies(config, logger as any);
+const dependencies = createAppDependencies(config, log);
 
 // Create handlers
 const handlers = createDownloadHandlers({
@@ -33,18 +31,18 @@ export const downloadRouter = createDownloadRouter(handlers, sseHandler);
 
 // Start worker
 dependencies.worker.start().catch((error) => {
-  logger.error({ error }, "Failed to start download worker");
+  log.error({ error }, "Failed to start download worker");
 });
 
 // Graceful shutdown
 process.on("SIGTERM", async () => {
-  logger.info("SIGTERM received, shutting down gracefully");
+  log.info("SIGTERM received, shutting down gracefully");
   await dependencies.worker.stop();
   process.exit(0);
 });
 
 process.on("SIGINT", async () => {
-  logger.info("SIGINT received, shutting down gracefully");
+  log.info("SIGINT received, shutting down gracefully");
   await dependencies.worker.stop();
   process.exit(0);
 });

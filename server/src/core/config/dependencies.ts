@@ -1,4 +1,4 @@
-import pino from "pino";
+
 import type { PinoLogger } from "hono-pino";
 
 // Repositories

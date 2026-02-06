@@ -1,11 +1,11 @@
 
-import { Hono } from "hono";
+import { OpenAPIHono } from "@hono/zod-openapi";
 import { HTTPException } from "hono/http-exception";
 
-export const createRouter = () => new Hono();
+export const createRouter = () => new OpenAPIHono();
 
 const createApp = () => {
-  const app = new Hono();
+  const app = new OpenAPIHono();
 
   app.notFound((c) => {
     c.var.logger.warn("404 Not Found: %o", { url: c.req.url });

@@ -1,4 +1,5 @@
 
+export * from "./logger";
 import { type Hono } from "hono";
 import { logger, prettyJSON } from "./logger";
 

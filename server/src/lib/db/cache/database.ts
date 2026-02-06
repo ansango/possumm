@@ -1,7 +1,7 @@
 import { Database } from "bun:sqlite";
 import { existsSync, statSync, mkdirSync } from "fs";
 import { resolve, dirname } from "path";
-import pino from "pino";
+
 import {
   createTable,
   countAll,
@@ -15,8 +15,9 @@ import {
   insertCache,
   countExpired,
 } from "./queries";
+import { log } from "@/lib/logger";
 
-const log = pino({ level: "info" });
+
 const DB_PATH = "./data/.cache.db";
 
 export interface CacheEntry {
