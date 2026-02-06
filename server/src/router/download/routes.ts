@@ -34,10 +34,10 @@ export const enqueueDownloadRoute = createRoute({
           schema: EnqueueDownloadResponseSchema,
         },
       },
-      description: "Descarga encolada exitosamente. Soporta tracks y álbumes de Bandcamp (bandcamp.com/track o bandcamp.com/album) y YouTube Music watch/playlist (music.youtube.com/watch o music.youtube.com/playlist). La extracción de metadata se ejecuta asíncronamente en segundo plano sin bloquear la respuesta. Emite evento SSE 'download:enqueued' con {downloadId, url, status}.",
+      description: "Download enqueued successfully. Supports Bandcamp tracks/albums (bandcamp.com/track or bandcamp.com/album) and YouTube Music watch/playlists (music.youtube.com/watch or music.youtube.com/playlist). Metadata extraction runs asynchronously in background without blocking response. Emits SSE event 'download:enqueued' with {downloadId, url, status}.",
     },
     400: {
-      description: "URL inválida: solo se soportan URLs de Bandcamp tracks/albums y YouTube Music watch/playlists. Verificar formato con expresiones regulares /bandcamp\\.com\\/(track|album)\\//i y /music\\.youtube\\.com\\/(watch|playlist)/i",
+      description: "Invalid URL: only Bandcamp tracks/albums and YouTube Music watch/playlists are supported. Verify format with regex /bandcamp\\.com\\/(track|album)\\//i and /music\\.youtube\\.com\\/(watch|playlist)/i",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -45,7 +45,7 @@ export const enqueueDownloadRoute = createRoute({
       },
     },
     409: {
-      description: "Descarga duplicada: ya existe una descarga activa (pending o in_progress) para esta URL normalizada. La normalización convierte protocol y domain a lowercase preservando path/query.",
+      description: "Duplicate download: an active download (pending or in_progress) already exists for this normalized URL. Normalization converts protocol and domain to lowercase preserving path/query.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -53,7 +53,7 @@ export const enqueueDownloadRoute = createRoute({
       },
     },
     429: {
-      description: "Cola llena: máximo 10 descargas pendientes permitidas simultáneamente. Reintentar cuando descargas completen o cancelar existentes.",
+      description: "Queue full: maximum 10 pending downloads allowed simultaneously. Retry when downloads complete or cancel existing ones.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -61,7 +61,7 @@ export const enqueueDownloadRoute = createRoute({
       },
     },
     507: {
-      description: "Almacenamiento insuficiente: se requiere mínimo 1GB de espacio disponible en disco. Storage check verifica directorio temporal antes de iniciar descarga.",
+      description: "Insufficient storage: minimum 1GB available disk space required. Storage check verifies temp directory before starting download.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -86,10 +86,10 @@ export const getDownloadStatusRoute = createRoute({
           schema: DownloadStatusResponseSchema,
         },
       },
-      description: "Status de descarga recuperado exitosamente. Incluye todos los campos de DownloadItem: id, url, normalized_url, status (pending/in_progress/completed/failed/cancelled/stalled), progress (0-100), error_message (nullable), file_path (nullable), media_id (nullable), y timestamps (created_at, started_at nullable, completed_at nullable, updated_at).",
+      description: "Download status retrieved successfully. Includes all DownloadItem fields: id, url, normalized_url, status (pending/in_progress/completed/failed/cancelled/stalled), progress (0-100), error_message (nullable), file_path (nullable), media_id (nullable), and timestamps (created_at, started_at nullable, completed_at nullable, updated_at).",
     },
     400: {
-      description: "ID inválido: el parámetro id debe ser UUID v4 válido.",
+      description: "Invalid ID: id parameter must be a valid UUID v4.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -97,7 +97,7 @@ export const getDownloadStatusRoute = createRoute({
       },
     },
     404: {
-      description: "Descarga no encontrada: no existe download con el ID especificado.",
+      description: "Download not found: no download exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -122,10 +122,10 @@ export const listDownloadsRoute = createRoute({
           schema: ListDownloadsResponseSchema,
         },
       },
-      description: "Lista de descargas recuperada exitosamente. Soporta filtros por status (pending|in_progress|completed|failed|cancelled|stalled) con query param ?status=. Ordenamiento: descargas activas (pending/in_progress) ordenadas por started_at DESC con priority, luego demás por updated_at DESC. Retorna array con objetos DownloadItem completos.",
+      description: "Downloads list retrieved successfully. Supports filtering by status (pending|in_progress|completed|failed|cancelled|stalled) with query param ?status=. Ordering: active downloads (pending/in_progress) ordered by started_at DESC with priority, then others by updated_at DESC. Returns array with complete DownloadItem objects.",
     },
     400: {
-      description: "Query param inválido: status debe ser uno de pending, in_progress, completed, failed, cancelled, stalled.",
+      description: "Invalid query param: status must be one of pending, in_progress, completed, failed, cancelled, stalled.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -133,7 +133,7 @@ export const listDownloadsRoute = createRoute({
       },
     },
     500: {
-      description: "Error interno del servidor al consultar base de datos.",
+      description: "Internal server error when querying database.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -158,10 +158,10 @@ export const cancelDownloadRoute = createRoute({
           schema: SuccessSchema,
         },
       },
-      description: "Descarga cancelada exitosamente. Si status es in_progress, mata el proceso yt-dlp activo. Actualiza status a 'cancelled' y emite evento SSE 'download:cancelled'. Limpia estado de throttle de progreso.",
+      description: "Download cancelled successfully. If status is in_progress, kills the active yt-dlp process. Updates status to 'cancelled' and emits SSE event 'download:cancelled'. Clears progress throttle state.",
     },
     400: {
-      description: "Estado inválido: solo se pueden cancelar descargas con status pending o in_progress. Descargas completed/failed/cancelled no son cancelables.",
+      description: "Invalid status: only downloads with pending or in_progress status can be cancelled. Completed/failed/cancelled downloads are not cancellable.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -169,7 +169,7 @@ export const cancelDownloadRoute = createRoute({
       },
     },
     404: {
-      description: "Descarga no encontrada: no existe download con el ID especificado.",
+      description: "Download not found: no download exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -194,10 +194,10 @@ export const retryDownloadRoute = createRoute({
           schema: SuccessSchema,
         },
       },
-      description: "Descarga reencolada para reintento exitosamente. Resetea status a 'pending' con progress 0%, error_message null, y file_path null. Emite evento SSE 'download:enqueued'. Worker volverá a procesar desde cola.",
+      description: "Download re-enqueued for retry successfully. Resets status to 'pending' with progress 0%, error_message null, and file_path null. Emits SSE event 'download:enqueued'. Worker will reprocess from queue.",
     },
     400: {
-      description: "Estado inválido: solo se pueden reintentar descargas con status failed o cancelled. Descargas pending/in_progress/completed no son reintentables.",
+      description: "Invalid status: only downloads with failed or cancelled status can be retried. Pending/in_progress/completed downloads are not retryable.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -205,7 +205,7 @@ export const retryDownloadRoute = createRoute({
       },
     },
     404: {
-      description: "Descarga no encontrada: no existe download con el ID especificado.",
+      description: "Download not found: no download exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -230,10 +230,10 @@ export const moveDownloadRoute = createRoute({
           schema: MoveToDestinationResponseSchema,
         },
       },
-      description: "Archivo movido exitosamente de directorio temporal a destino final usando Bun fs.rename(). Actualiza file_path en base de datos con nueva ubicación.",
+      description: "File moved successfully from temp directory to final destination using Bun fs.rename(). Updates file_path in database with new location.",
     },
     400: {
-      description: "Estado inválido: solo se pueden mover descargas con status completed. Descarga debe haber finalizado exitosamente antes de mover.",
+      description: "Invalid status: only downloads with completed status can be moved. Download must have finished successfully before moving.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -241,7 +241,7 @@ export const moveDownloadRoute = createRoute({
       },
     },
     404: {
-      description: "Descarga no encontrada o archivo no existe en filesystem.",
+      description: "Download not found or file does not exist in filesystem.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -266,10 +266,10 @@ export const getMediaDetailsRoute = createRoute({
           schema: MediaSchema,
         },
       },
-      description: "Detalles de media recuperados exitosamente. Incluye todos los campos de MediaItem: id, provider (bandcamp|youtube_music), provider_id, title (required), artist/album/album_artist/year/cover_url/duration/tracks (todos nullable), y timestamps (created_at, updated_at). Campos nullable son null si yt-dlp no extrajo información.",
+      description: "Media details retrieved successfully. Includes all MediaItem fields: id, provider (bandcamp|youtube_music), provider_id, title (required), artist/album/album_artist/year/cover_url/duration/tracks (all nullable), and timestamps (created_at, updated_at). Nullable fields are null if yt-dlp did not extract information.",
     },
     400: {
-      description: "ID inválido: el parámetro id debe ser UUID v4 válido.",
+      description: "Invalid ID: id parameter must be a valid UUID v4.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -277,7 +277,7 @@ export const getMediaDetailsRoute = createRoute({
       },
     },
     404: {
-      description: "Media no encontrada: no existe media con el ID especificado.",
+      description: "Media not found: no media exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -309,10 +309,10 @@ export const updateMediaMetadataRoute = createRoute({
           schema: SuccessSchema,
         },
       },
-      description: "Metadata actualizada exitosamente. Campos editables: title, artist, album, album_artist, year, cover_url, duration, tracks (todos nullable). Actualiza timestamp updated_at automáticamente.",
+      description: "Metadata updated successfully. Editable fields: title, artist, album, album_artist, year, cover_url, duration, tracks (all nullable). Updates updated_at timestamp automatically.",
     },
     400: {
-      description: "Campos inválidos: no se puede modificar provider o provider_id (campos inmutables que identifican fuente original). Solo se permiten actualizaciones a metadata editable.",
+      description: "Invalid fields: cannot modify provider or provider_id (immutable fields that identify original source). Only editable metadata updates are allowed.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -320,7 +320,7 @@ export const updateMediaMetadataRoute = createRoute({
       },
     },
     404: {
-      description: "Media no encontrada: no existe media con el ID especificado.",
+      description: "Media not found: no media exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
