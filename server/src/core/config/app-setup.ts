@@ -1,5 +1,5 @@
 
-import { createAppDependencies, getDefaultConfig } from "@/core/config/dependencies";
+import { createAppDependencies, ensureDirectoriesExist, getDefaultConfig } from "@/core/config/dependencies";
 import { log } from "@/lib/logger";
 import type { PinoLogger } from "hono-pino";
 
@@ -7,6 +7,13 @@ import type { PinoLogger } from "hono-pino";
 
 // Create app dependencies
 const config = getDefaultConfig();
+
+// Ensure directories exist before starting
+await ensureDirectoriesExist(config).catch((error) => {
+  log.error({ error }, "Failed to create required directories");
+  process.exit(1);
+});
+
 const dependencies = createAppDependencies(config, log as unknown as PinoLogger);
 
 // Start worker

@@ -1,5 +1,6 @@
 
 import type { PinoLogger } from "hono-pino";
+import { mkdir } from "node:fs/promises";
 
 // Repositories
 import { SQLiteMediaRepository } from "@/core/infrastructure/downloads/SQLiteMediaRepository";
@@ -192,8 +193,8 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
 
 export function getDefaultConfig(): AppConfig {
   return {
-    downloadTempDir: process.env.DOWNLOAD_TEMP_DIR || "/tmp/downloads",
-    downloadDestDir: process.env.DOWNLOAD_DEST_DIR || "/home/downloads",
+    downloadTempDir: process.env.DOWNLOAD_TEMP_DIR || "./data/temp",
+    downloadDestDir: process.env.DOWNLOAD_DEST_DIR || "./data/downloads",
     minStorageGB: parseInt(process.env.MIN_STORAGE_GB || "5", 10),
     maxPendingDownloads: parseInt(process.env.MAX_PENDING_DOWNLOADS || "10", 10),
     cleanupRetentionDays: parseInt(process.env.CLEANUP_RETENTION_DAYS || "7", 10),
@@ -201,4 +202,13 @@ export function getDefaultConfig(): AppConfig {
     eventBufferSize: parseInt(process.env.EVENT_BUFFER_SIZE || "100", 10),
     progressThrottleMs: parseInt(process.env.PROGRESS_THROTTLE_MS || "500", 10),
   };
+}
+
+/**
+ * Ensures required directories exist, creating them if necessary.
+ * @param config - Application configuration with directory paths
+ */
+export async function ensureDirectoriesExist(config: AppConfig): Promise<void> {
+  await mkdir(config.downloadTempDir, { recursive: true });
+  await mkdir(config.downloadDestDir, { recursive: true });
 }

@@ -1,6 +1,14 @@
 # deps
 node_modules/
-# data/.cache.db, .downloads.db
+
+# environment
+.env
+
+# databases
 data/*.db
 data/*.db-shm
-data/*.db-wal   
+data/*.db-wal
+
+# downloads
+data/temp/
+data/downloads/
