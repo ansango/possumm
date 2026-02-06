@@ -8,7 +8,38 @@ import { MediaItem } from "@/core/domain/media/entities/media";
 import type { PinoLogger } from "hono-pino";
 import { join } from "path";
 
+/**
+ * Use case for processing a pending download.
+ * 
+ * Application layer - Orchestrates the complete download execution flow.
+ * This is the main use case that coordinates all download services to
+ * execute downloads from the queue.
+ * 
+ * Execution flow:
+ * 1. Validates download is pending
+ * 2. Checks available disk space
+ * 3. Updates status to in_progress
+ * 4. Executes download with progress tracking
+ * 5. Extracts and links metadata (if not already linked)
+ * 6. Updates status to completed/failed
+ * 7. Emits events for SSE consumers
+ * 
+ * Called by DownloadWorker for automated processing of queued downloads.
+ */
 export class ProcessDownload {
+  /**
+   * Creates a new ProcessDownload use case.
+   * 
+   * @param downloadRepo - Download repository for persistence
+   * @param mediaRepo - Media repository for metadata
+   * @param downloadExecutor - Service for executing yt-dlp downloads
+   * @param storageService - Service for checking disk space
+   * @param metadataExtractor - Service for extracting metadata
+   * @param eventEmitter - Event emitter for SSE notifications
+   * @param logger - Logger for structured logging
+   * @param tempDir - Temporary directory for downloads
+   * @param minStorageGB - Minimum required storage space in GB
+   */
   constructor(
     private readonly downloadRepo: DownloadRepository,
     private readonly mediaRepo: MediaRepository,
@@ -21,6 +52,81 @@ export class ProcessDownload {
     private readonly minStorageGB: number
   ) {}
 
+  /**
+   * Processes a pending download through its complete lifecycle.
+   * 
+   * Detailed flow:
+   * 1. Load download from repository (validates existence)
+   * 2. Validate status is "pending" (prevents reprocessing)
+   * 3. Check disk space availability (must meet minStorageGB threshold)
+   * 4. Update status to "in_progress" with 0% progress
+   * 5. Emit "download:started" event
+   * 6. Execute download with yt-dlp:
+   *    - Progress callback updates database and emits throttled events
+   *    - Process ID stored for cancellation support
+   * 7. Extract and link metadata (if not already associated):
+   *    - Calls MetadataExtractor to get media info
+   *    - Creates MediaItem or finds existing by provider ID
+   *    - Links media to download via mediaId
+   * 8. Update status to "completed" with 100% and file path
+   * 9. Emit "download:completed" event
+   * 
+   * On error:
+   * - Updates status to "failed" with error message
+   * - Emits "download:failed" event
+   * - Re-throws error for worker to handle
+   * 
+   * @param downloadId - ID of download to process
+   * @throws Error if download not found (404)
+   * @throws Error if download not pending (409)
+   * @throws Error if insufficient storage space (507)
+   * @throws Error if yt-dlp execution fails
+   * 
+   * @example
+   * ```typescript
+   * const processDownload = new ProcessDownload(
+   *   downloadRepo,
+   *   mediaRepo,
+   *   downloadExecutor,
+   *   storageService,
+   *   metadataExtractor,
+   *   eventEmitter,
+   *   logger,
+   *   '/tmp/downloads',
+   *   10 // 10GB minimum
+   * );
+   * 
+   * // Process a queued download
+   * await processDownload.execute(42);
+   * // Flow:
+   * // 1. Validates download 42 exists and is pending
+   * // 2. Checks /tmp/downloads has >= 10GB free
+   * // 3. Updates to in_progress, emits download:started
+   * // 4. Executes yt-dlp with progress callbacks
+   * // 5. Extracts metadata and creates/links MediaItem
+   * // 6. Updates to completed, emits download:completed
+   * 
+   * // Error: insufficient storage
+   * try {
+   *   await processDownload.execute(43);
+   * } catch (error) {
+   *   // Error: Insufficient storage space. Required: 10GB
+   *   // Event emitted: storage:low with { availableGB: 5.2, requiredGB: 10 }
+   * }
+   * 
+   * // Error: download not pending
+   * try {
+   *   await processDownload.execute(44); // Already completed
+   * } catch (error) {
+   *   // Error: Download 44 is not pending (status: completed)
+   * }
+   * ```
+   * 
+   * @see DownloadExecutor.execute - For download execution details
+   * @see MetadataExtractor.extract - For metadata extraction
+   * @see StorageService.hasEnoughSpace - For space validation
+   * @see DownloadEventEmitter - For event emission patterns
+   */
   async execute(downloadId: number): Promise<void> {
     const download = await this.downloadRepo.findById(downloadId);
     if (!download) {
@@ -117,6 +223,51 @@ export class ProcessDownload {
     }
   }
 
+  /**
+   * Extracts metadata and links it to a download.
+   * 
+   * Private helper called after successful download execution if the
+   * download doesn't already have associated media (mediaId is null).
+   * 
+   * Flow:
+   * 1. Determines provider from URL (bandcamp or youtube)
+   * 2. Calls MetadataExtractor to get yt-dlp metadata
+   * 3. Attempts to find existing MediaItem by provider+providerId
+   * 4. Creates new MediaItem if not found
+   * 5. Links media to download via updateMediaId
+   * 
+   * Failures are logged but not thrown - metadata linking is optional.
+   * Download can complete successfully even if this fails.
+   * 
+   * @param downloadId - Download ID to link metadata to
+   * @param url - Original download URL for provider detection
+   * @param filePath - Download output path (not currently used but available)
+   * 
+   * @example
+   * ```typescript
+   * // Called internally after download completion
+   * await this.extractAndLinkMetadata(
+   *   42,
+   *   'https://music.youtube.com/watch?v=abc123',
+   *   '/tmp/downloads'
+   * );
+   * // Flow:
+   * // 1. Detects provider = 'youtube'
+   * // 2. Extracts metadata: { id: 'abc123', title: 'Song', artist: 'Artist', ... }
+   * // 3. Searches for existing media: findByProviderAndProviderId('youtube', 'abc123')
+   * // 4. Creates new MediaItem if not found
+   * // 5. Updates download.mediaId = media.id
+   * 
+   * // Bandcamp album example
+   * await this.extractAndLinkMetadata(
+   *   43,
+   *   'https://artist.bandcamp.com/album/album-name',
+   *   '/tmp/downloads'
+   * );
+   * // Flow similar but with provider = 'bandcamp'
+   * // Metadata may have null fields (artist, album_artist)
+   * ```
+   */
   private async extractAndLinkMetadata(
     downloadId: number,
     url: string,

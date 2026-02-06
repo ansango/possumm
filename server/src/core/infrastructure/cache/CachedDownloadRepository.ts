@@ -2,9 +2,65 @@ import { DownloadRepository, CreateDownloadData } from "@/core/domain/download/r
 import { DownloadItem, DownloadStatus } from "@/core/domain/download/entities/download";
 import { withCache } from "@/lib/db/cache/utils";
 
+/**
+ * Caching decorator for DownloadRepository.
+ * 
+ * Infrastructure layer - Adds caching layer using Decorator pattern.
+ * Wraps any DownloadRepository implementation with automatic caching.
+ * 
+ * Caching strategy:
+ * - Read operations: Cached with 30-second TTL
+ * - Write operations: No caching (pass-through)
+ * - Real-time queries: No caching (findNextPending, cleanup queries)
+ * 
+ * Cache keys follow pattern:
+ * - `downloads:{id}` - Individual download
+ * - `downloads:active-url:{normalizedUrl}` - Active download by URL
+ * - `downloads:list:{page}:{pageSize}[:{status}]` - Paginated lists
+ * - `downloads:count[:{status}]` - Count queries
+ * 
+ * Short TTL (30s) ensures relatively fresh data while reducing database load
+ * for frequently accessed downloads (progress polling, status checks).
+ * 
+ * Cache invalidation is implicit via TTL - no manual invalidation on writes.
+ * This means cached data may be stale for up to 30 seconds.
+ * 
+ * @example
+ * ```typescript
+ * const sqliteRepo = new SQLiteDownloadRepository();
+ * const cachedRepo = new CachedDownloadRepository(sqliteRepo);
+ * 
+ * // First call: cache miss, hits database
+ * const download1 = await cachedRepo.findById(42);
+ * 
+ * // Second call within 30s: cache hit, no database query
+ * const download2 = await cachedRepo.findById(42);
+ * 
+ * // Write operations always hit database
+ * await cachedRepo.updateStatus(42, 'completed', 100, null);
+ * // Cached entry remains until TTL expires
+ * ```
+ * 
+ * @see withCache - For caching implementation details
+ * @see SQLiteDownloadRepository - For underlying implementation
+ */
 export class CachedDownloadRepository implements DownloadRepository {
+  /**
+   * Creates a new CachedDownloadRepository decorator.
+   * 
+   * @param repository - Underlying repository to wrap with caching
+   */
   constructor(private readonly repository: DownloadRepository) {}
 
+  /**
+   * Finds download by ID with caching.
+   * 
+   * Cache key: `downloads:{id}`
+   * TTL: 30 seconds
+   * 
+   * @param id - Download ID
+   * @returns Cached or fresh download
+   */
   async findById(id: number): Promise<DownloadItem | null> {
     return withCache(
       `downloads:${id}`,
@@ -13,6 +69,14 @@ export class CachedDownloadRepository implements DownloadRepository {
     );
   }
 
+  /**
+   * Finds next pending download WITHOUT caching.
+   * 
+   * No caching - must be real-time for worker queue processing.
+   * Stale data would cause duplicate processing.
+   * 
+   * @returns Next pending download
+   */
   async findNextPending(): Promise<DownloadItem | null> {
     // Don't cache this, it needs to be real-time
     return this.repository.findNextPending();
