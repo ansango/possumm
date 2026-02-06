@@ -105,15 +105,8 @@ export class EnqueueDownload {
 
       // Update download with media_id
       const download = await this.downloadRepo.findById(downloadId);
-      if (download && download.status === "pending") {
-        await this.downloadRepo.updateStatus(
-          downloadId,
-          "pending",
-          0,
-          null
-        );
-        // Note: We can't update just media_id with current interface
-        // This would need a dedicated method or we accept it's updated during processing
+      if (download && download.status === "pending" && media.id !== null) {
+        await this.downloadRepo.updateMediaId(downloadId, media.id);
       }
     } catch (error) {
       this.logger.warn({ error, downloadId }, "Metadata extraction failed, continuing without media link");

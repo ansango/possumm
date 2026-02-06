@@ -1,4 +1,4 @@
-import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
+import { DownloadRepository, CreateDownloadData } from "@/core/domain/download/repositories/download-repository";
 import { DownloadItem, DownloadStatus } from "@/core/domain/download/entities/download";
 import { downloadsDb } from "@/lib/db/downloads/database";
 import { Database } from "bun:sqlite";
@@ -96,9 +96,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
     return result.count;
   }
 
-  async create(
-    download: Omit<DownloadItem, "id" | "createdAt" | "startedAt" | "finishedAt">
-  ): Promise<DownloadItem> {
+  async create(download: CreateDownloadData): Promise<DownloadItem> {
     const stmt = this.db.prepare(`
       INSERT INTO downloads (
         url, normalized_url, media_id, status, progress, error_message, file_path, process_id
@@ -163,6 +161,15 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       WHERE id = ?
     `);
     stmt.run(processId, id);
+  }
+
+  async updateMediaId(id: number, mediaId: number): Promise<void> {
+    const stmt = this.db.prepare(`
+      UPDATE downloads
+      SET media_id = ?
+      WHERE id = ?
+    `);
+    stmt.run(mediaId, id);
   }
 
   async delete(id: number): Promise<void> {
