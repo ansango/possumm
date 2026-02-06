@@ -1,9 +1,9 @@
 
 export * from "./logger";
-import { type Hono } from "hono";
+import { type OpenAPIHono } from "@hono/zod-openapi";
 import { logger, prettyJSON } from "./logger";
 
-const middleware = (app: Hono) => {
+const middleware = (app: OpenAPIHono) => {
   app.use(logger).use(prettyJSON);
 };
 

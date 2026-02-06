@@ -1,12 +1,12 @@
 
-import { Hono } from "hono";
+import { type OpenAPIHono } from "@hono/zod-openapi";
 
 import health from "./health";
 import download from "./download";
 
 const routes = [health, download];
 
-const router = (app: Hono) => {
+const router = (app: OpenAPIHono) => {
   routes.forEach((route) => {
     app.route("/", route);
   });
