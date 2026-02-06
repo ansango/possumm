@@ -9,5 +9,13 @@ export const SuccessSchema = z.object({
 });
 
 export const IdParamSchema = z.object({
-  id: z.string().regex(/^\d+$/).transform(Number),
+  id: z.string().regex(/^\d+$/, "ID must be a number").transform(Number).openapi({
+    param: {
+      name: "id",
+      in: "path",
+      required: true,
+      example: "1",
+    },
+    example: "1",
+  }),
 });

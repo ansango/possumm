@@ -29,6 +29,10 @@ export default function openapi(app: OpenAPIHono) {
       url: "/docs",
       pageTitle: "Documentation",
       defaultOpenAllTags: true,
+      defaultHttpClient: {
+        targetKey: "node",
+        clientKey: "fetch",
+      },
     })
   );
 }

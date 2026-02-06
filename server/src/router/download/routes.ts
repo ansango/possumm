@@ -73,7 +73,7 @@ export const enqueueDownloadRoute = createRoute({
 
 export const getDownloadStatusRoute = createRoute({
   method: "get",
-  path: "/:id",
+  path: "/{id}",
   tags: ["Downloads"],
   summary: "Get download status",
   request: {
@@ -145,7 +145,7 @@ export const listDownloadsRoute = createRoute({
 
 export const cancelDownloadRoute = createRoute({
   method: "post",
-  path: "/:id/cancel",
+  path: "/{id}/cancel",
   tags: ["Downloads"],
   summary: "Cancel a download",
   request: {
@@ -181,7 +181,7 @@ export const cancelDownloadRoute = createRoute({
 
 export const retryDownloadRoute = createRoute({
   method: "post",
-  path: "/:id/retry",
+  path: "/{id}/retry",
   tags: ["Downloads"],
   summary: "Retry a failed download",
   request: {
@@ -217,7 +217,7 @@ export const retryDownloadRoute = createRoute({
 
 export const moveDownloadRoute = createRoute({
   method: "post",
-  path: "/:id/move",
+  path: "/{id}/move",
   tags: ["Downloads"],
   summary: "Move completed download to destination",
   request: {
@@ -253,7 +253,7 @@ export const moveDownloadRoute = createRoute({
 
 export const getMediaDetailsRoute = createRoute({
   method: "get",
-  path: "/media/:id",
+  path: "/media/{id}",
   tags: ["Media"],
   summary: "Get media details",
   request: {
@@ -289,7 +289,7 @@ export const getMediaDetailsRoute = createRoute({
 
 export const updateMediaMetadataRoute = createRoute({
   method: "patch",
-  path: "/media/:id",
+  path: "/media/{id}",
   tags: ["Media"],
   summary: "Update media metadata",
   request: {

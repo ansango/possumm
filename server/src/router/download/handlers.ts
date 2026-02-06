@@ -299,6 +299,7 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
 
 export const downloadValidationHook: AppRouteHook = (result, c) => {
   if (!result.success) {
+    
     return c.json(
       {
         error: "Invalid download request. Please check your parameters.",
