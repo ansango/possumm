@@ -42,61 +42,84 @@ export const SSEQuerySchema = z.object({
 });
 
 // Response schemas
-export const MediaSchema = z.object({
-  id: z.number(),
-  title: z.string(),
-  artist: z.string().nullable(),
-  album: z.string().nullable(),
-  albumArtist: z.string().nullable(),
-  duration: z.number().nullable(),
-  year: z.number().nullable(),
-  thumbnailUrl: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-});
 
-export const DownloadSchema = z.object({
-  id: z.number(),
-  mediaId: z.number(),
-  url: z.string(),
-  normalizedUrl: z.string(),
-  platform: PlatformEnum,
-  status: DownloadStatusEnum,
-  progress: z.number(),
-  filePath: z.string().nullable(),
-  fileSize: z.number().nullable(),
-  errorMessage: z.string().nullable(),
-  createdAt: z.string(),
-  updatedAt: z.string(),
-  startedAt: z.string().nullable(),
-  completedAt: z.string().nullable(),
-});
-
+// EnqueueDownload response
 export const EnqueueDownloadResponseSchema = z.object({
-  download: DownloadSchema,
-  media: MediaSchema,
+  downloadId: z.number(),
+  mediaId: z.number().nullable(),
+  url: z.string(),
+  status: z.string(),
 });
 
+// GetDownloadStatus response
 export const DownloadStatusResponseSchema = z.object({
-  download: DownloadSchema,
-  media: MediaSchema,
+  download: z.object({
+    id: z.number(),
+    url: z.string(),
+    status: z.string(),
+    progress: z.number(),
+    errorMessage: z.string().nullable(),
+    filePath: z.string().nullable(),
+    processId: z.number().nullable(),
+    createdAt: z.coerce.date(),
+    startedAt: z.coerce.date().nullable(),
+    finishedAt: z.coerce.date().nullable(),
+  }),
+  media: z.object({
+    id: z.number(),
+    title: z.string().nullable(),
+    artist: z.string().nullable(),
+    album: z.string().nullable(),
+    duration: z.number().nullable(),
+    coverUrl: z.string().nullable(),
+  }).nullable(),
 });
 
+// ListDownloads response
 export const ListDownloadsResponseSchema = z.object({
   downloads: z.array(
     z.object({
-      download: DownloadSchema,
-      media: MediaSchema,
+      id: z.number(),
+      url: z.string(),
+      status: z.string(),
+      progress: z.number(),
+      errorMessage: z.string().nullable(),
+      filePath: z.string().nullable(),
+      createdAt: z.coerce.date(),
+      startedAt: z.coerce.date().nullable(),
+      finishedAt: z.coerce.date().nullable(),
     })
   ),
-  pagination: z.object({
-    page: z.number(),
-    pageSize: z.number(),
-    total: z.number(),
-    hasMore: z.boolean(),
-  }),
+  total: z.number(),
+  page: z.number(),
+  pageSize: z.number(),
 });
 
+// GetMediaDetails response
+export const MediaSchema = z.object({
+  id: z.number(),
+  title: z.string().nullable(),
+  artist: z.string().nullable(),
+  album: z.string().nullable(),
+  albumArtist: z.string().nullable(),
+  year: z.string().nullable(),
+  coverUrl: z.string().nullable(),
+  duration: z.number().nullable(),
+  provider: z.string(),
+  providerId: z.string().nullable(),
+  kind: z.enum(["track", "album"]).nullable(),
+  tracks: z.array(
+    z.object({
+      track: z.number().nullable(),
+      title: z.string().nullable(),
+      duration: z.number().nullable(),
+    })
+  ).nullable(),
+  createdAt: z.coerce.date().nullable(),
+  updatedAt: z.coerce.date().nullable(),
+});
+
+// MoveToDestination response
 export const MoveToDestinationResponseSchema = z.object({
   success: z.boolean(),
   destPath: z.string(),

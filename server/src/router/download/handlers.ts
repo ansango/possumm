@@ -46,7 +46,7 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
     try {
       const { id } = c.req.valid("param");
       const result = await useCases.getDownloadStatus.execute(id);
-      return c.json(result as any, 200);
+      return c.json(result, 200);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return c.json({ error: message }, 404);
@@ -65,7 +65,7 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
       }
 
       const result = await useCases.listDownloads.execute(status, page, pageSize);
-      return c.json(result as any, 200);
+      return c.json(result, 200);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return c.json({ error: message }, 500);
@@ -109,7 +109,7 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
     try {
       const { id } = c.req.valid("param");
       const result = await useCases.getMediaDetails.execute(id);
-      return c.json(result as any, 200);
+      return c.json(result, 200);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       return c.json({ error: message }, 404);
