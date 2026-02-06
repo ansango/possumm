@@ -18,14 +18,15 @@ export type DownloadEventType =
   | "storage:low";
 
 export interface DownloadEventData {
-  downloadId: number;
+  downloadId?: number;
   mediaId?: number | null;
-  url: string;
+  url?: string;
   status?: string;
   progress?: number;
   error?: string | null;
   filePath?: string | null;
   availableGB?: number;
+  requiredGB?: number;
 }
 
 export class DownloadEventEmitter extends EventEmitter {
@@ -60,7 +61,7 @@ export class DownloadEventEmitter extends EventEmitter {
     this.emit(type, event);
   }
 
-  emitProgress(downloadId: number, progress: number, url: string): void {
+  emitProgress(downloadId: number, progress: number, url?: string): void {
     const now = Date.now();
     const lastEmit = this.progressThrottle.get(downloadId);
 
