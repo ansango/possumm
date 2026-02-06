@@ -5,7 +5,6 @@ import { PlatformDetector } from "../services/PlatformDetector";
 import { MetadataExtractor } from "../services/MetadataExtractor";
 import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
 import { MediaItem } from "@/core/domain/media/entities/media";
-import { DownloadItem } from "@/core/domain/download/entities/download";
 import type { PinoLogger } from "hono-pino";
 
 interface EnqueueResult {
