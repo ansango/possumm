@@ -1,2 +1,6 @@
 # deps
 node_modules/
+# data/.cache.db, .downloads.db
+data/*.db
+data/*.db-shm
+data/*.db-wal   
