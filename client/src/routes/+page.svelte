@@ -69,6 +69,8 @@
 <div class="container">
 	<h1>SSE Logger</h1>
 	
+	<DownloadsList />
+
 	<input
 		type="text"
 		bind:value={url}
@@ -90,8 +92,6 @@
 			</div>
 		{/each}
 	</div>
-
-	<DownloadsList />
 </div>
 
 <style>

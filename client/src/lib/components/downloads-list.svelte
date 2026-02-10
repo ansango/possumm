@@ -1,17 +1,18 @@
 <script lang="ts">
-	import { createQuery } from '@tanstack/svelte-query';
+	import { createInfiniteQuery } from '@tanstack/svelte-query';
 	import type { DownloadsResponse, DownloadStatus } from '$lib/types/download';
 
 	let {
 		status,
-		page = 0,
 		pageSize = 20
-	}: { status?: DownloadStatus; page?: number; pageSize?: number } = $props();
+	}: { status?: DownloadStatus; pageSize?: number } = $props();
 
-	const downloadsQuery = createQuery(() => ({
-		queryKey: ['downloads', { status, page, pageSize }],
-		queryFn: async (): Promise<DownloadsResponse> => {
-			let url = `http://localhost:3000/api/downloads?page=${page}&pageSize=${pageSize}`;
+	let scrollContainer = $state<HTMLDivElement>();
+
+	const downloadsQuery = createInfiniteQuery(() => ({
+		queryKey: ['downloads', { status, pageSize }],
+		queryFn: async ({ pageParam }): Promise<DownloadsResponse> => {
+			let url = `http://localhost:3000/api/downloads?page=${pageParam}&pageSize=${pageSize}`;
 
 			if (status) {
 				url += `&status=${status}`;
@@ -24,8 +25,40 @@
 			}
 
 			return response.json();
+		},
+		initialPageParam: 0,
+		getNextPageParam: (lastPage) => {
+			const nextPage = lastPage.page + 1;
+			const totalPages = Math.ceil(lastPage.total / lastPage.pageSize);
+			return nextPage < totalPages ? nextPage : undefined;
 		}
 	}));
+
+	function handleScroll() {
+		if (!scrollContainer || downloadsQuery.isFetchingNextPage || !downloadsQuery.hasNextPage)
+			return;
+
+		const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+		const scrollPercentage = (scrollTop + clientHeight) / scrollHeight;
+
+		if (scrollPercentage > 0.8) {
+			downloadsQuery.fetchNextPage();
+		}
+	}
+
+	$effect(() => {
+		if (scrollContainer) {
+			scrollContainer.addEventListener('scroll', handleScroll);
+			return () => scrollContainer?.removeEventListener('scroll', handleScroll);
+		}
+	});
+
+	$effect(() => {
+		const data = downloadsQuery.data;
+		if (data) {
+			void data;
+		}
+	});
 </script>
 
 <div class="downloads-list">
@@ -36,15 +69,18 @@
 			Error: {downloadsQuery.error?.message || 'Failed to load downloads'}
 		</div>
 	{:else if downloadsQuery.data}
+		{@const allDownloads = downloadsQuery.data.pages.flatMap((page) => page.downloads)}
+		{@const firstPage = downloadsQuery.data.pages[0]}
+		
 		<div class="downloads-header">
-			<h2>Downloads ({downloadsQuery.data.total})</h2>
+			<h2>Downloads ({firstPage?.total || 0})</h2>
 		</div>
 
-		{#if downloadsQuery.data.downloads.length === 0}
+		{#if allDownloads.length === 0}
 			<div class="empty-state">No downloads found</div>
 		{:else}
-			<div class="downloads-grid">
-				{#each downloadsQuery.data.downloads as download (download.id)}
+			<div class="downloads-grid" bind:this={scrollContainer}>
+				{#each allDownloads as download (download.id)}
 					<div class="download-card" data-status={download.status}>
 						<div class="download-header">
 							<span class="download-id">#{download.id}</span>
@@ -81,14 +117,10 @@
 						</div>
 					</div>
 				{/each}
-			</div>
-
-			<div class="pagination">
-				<span>
-					Page {downloadsQuery.data.page + 1} of {Math.ceil(
-						downloadsQuery.data.total / downloadsQuery.data.pageSize
-					)}
-				</span>
+				
+				{#if downloadsQuery.isFetchingNextPage}
+					<div class="loading-more">Loading more...</div>
+				{/if}
 			</div>
 		{/if}
 	{/if}
@@ -126,9 +158,11 @@
 	}
 
 	.downloads-grid {
-		display: grid;
+		display: flex;
+		flex-direction: column;
 		gap: 1rem;
-		grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+		max-height: 500px;
+		overflow-y: auto;
 	}
 
 	.download-card {
@@ -270,5 +304,12 @@
 		margin-top: 1.5rem;
 		text-align: center;
 		color: #6b7280;
+	}
+
+	.loading-more {
+		text-align: center;
+		padding: 1rem;
+		color: #6b7280;
+		font-size: 0.875rem;
 	}
 </style>
