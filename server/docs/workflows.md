@@ -398,7 +398,7 @@ const stalledDownloads = await this.downloadRepo.findStalledInProgress(60);
 | RetryDownload | `download:enqueued` | `{downloadId, url, status}` |
 | MarkStalledDownloads | `download:stalled` | `{downloadId, url, status, error}` |
 
-Ver [sse-system.md](sse-system.md) para detalles del sistema de eventos.
+Ver [download-logs-api.md](download-logs-api.md) para detalles del sistema de logs.
 
 ## Recomendaciones
 
@@ -415,4 +415,4 @@ Ver [sse-system.md](sse-system.md) para detalles del sistema de eventos.
 **Ver también**:
 - [Services](services.md#downloadexecutor) - Detalles de ejecución yt-dlp
 - [Domain Model](domain-model.md) - Máquina de estados Download
-- [SSE System](sse-system.md) - Sistema de eventos en tiempo real
+- [Download Logs API](download-logs-api.md) - Sistema de logs persistentes con REST API

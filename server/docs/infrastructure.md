@@ -198,7 +198,7 @@ flowchart TD
 
 | Componente | Tipo | Propósito |
 |------------|------|-----------|
-| `buffer` | `DownloadEvent[]` | Buffer circular (100 eventos) para recovery SSE |
+| `cache` | LRU Cache | Cache compartido (30s TTL) para repositorios |
 | `nextId` | `number` | Contador monotónico de event IDs |
 | `progressThrottle` | `Map<downloadId, timestamp>` | Tracking throttle por download |
 
@@ -382,7 +382,7 @@ async stop(): Promise<void> {
 
 ✅ **Índice compuesto `(normalized_url, status)` crítico para queries de detección de duplicados**: Este índice permite buscar duplicados activos en O(log n) tiempo. Sin él, la query requeriría full table scan en tabla downloads.
 
-🔧 **WAL mode en SQLite permite lecturas concurrentes sin bloquear escrituras**: Modo Write-Ahead Logging es esencial para permitir SSE streams (lecturas) mientras worker procesa downloads (escrituras). Sin WAL, lecturas bloquearían escrituras causando timeouts.
+🔧 **WAL mode en SQLite permite lecturas concurrentes sin bloquear escrituras**: Modo Write-Ahead Logging es esencial para permitir queries de logs (lecturas) mientras worker procesa downloads (escrituras). Sin WAL, lecturas bloquearían escrituras causando timeouts.
 
 ⚠️ **Buffer circular 100 eventos balancea memoria y ventana de recuperación**: Con ~2 eventos/segundo típico, 100 eventos soportan ~50 segundos de recovery window. A 10KB por evento, el buffer usa ~1MB memoria. Aumentar buffer mejora recovery pero incrementa memoria.
 

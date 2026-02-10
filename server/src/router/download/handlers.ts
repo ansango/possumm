@@ -3,6 +3,7 @@ import {
   EnqueueDownloadRoute,
   GetDownloadStatusRoute,
   ListDownloadsRoute,
+  GetDownloadLogsRoute,
   CancelDownloadRoute,
   RetryDownloadRoute,
   MoveDownloadRoute,
@@ -12,6 +13,7 @@ import {
 import { EnqueueDownload } from "@/core/application/download/use-cases/EnqueueDownload";
 import { GetDownloadStatus } from "@/core/application/download/use-cases/GetDownloadStatus";
 import { ListDownloads } from "@/core/application/download/use-cases/ListDownloads";
+import { GetDownloadLogs } from "@/core/application/download/use-cases/GetDownloadLogs";
 import { CancelDownload } from "@/core/application/download/use-cases/CancelDownload";
 import { RetryDownload } from "@/core/application/download/use-cases/RetryDownload";
 import { MoveToDestination } from "@/core/application/download/use-cases/MoveToDestination";
@@ -26,6 +28,7 @@ interface DownloadUseCases {
   enqueueDownload: EnqueueDownload;
   getDownloadStatus: GetDownloadStatus;
   listDownloads: ListDownloads;
+  getDownloadLogs: GetDownloadLogs;
   cancelDownload: CancelDownload;
   retryDownload: RetryDownload;
   moveToDestination: MoveToDestination;
@@ -221,6 +224,33 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
     }
   };
 
+  /**
+   * Handler for retrieving download logs with pagination.
+   * 
+   * GET /api/downloads/:id/logs?page=1&limit=50
+   */
+  const getLogs: AppRouteHandler<GetDownloadLogsRoute> = async (c) => {
+    try {
+      const { id } = c.req.valid("param");
+      const query = c.req.valid("query");
+      const result = await useCases.getDownloadLogs.execute(
+        id,
+        query.page,
+        query.limit
+      );
+      return c.json(result, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      
+      // Check if it's a "not found" error
+      if (message.includes("not found")) {
+        return c.json({ error: message }, 404);
+      }
+      
+      return c.json({ error: message }, 400);
+    }
+  };
+
   const cancel: AppRouteHandler<CancelDownloadRoute> = async (c) => {
     try {
       const { id } = c.req.valid("param");
@@ -289,6 +319,7 @@ export function createDownloadHandlers(useCases: DownloadUseCases) {
     enqueue,
     getStatus,
     list,
+    getLogs,
     cancel,
     retry,
     move,

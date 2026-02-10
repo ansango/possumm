@@ -4,6 +4,7 @@ import { dirname, resolve } from "path";
 import {
   createTableMedia,
   createTableDownloads,
+  createTableJobLogs,
   createIndexMediaProviderId,
   createIndexDownloadsStatus,
   createIndexDownloadsCreatedAt,
@@ -12,6 +13,8 @@ import {
   createIndexDownloadsProcessId,
   createIndexDownloadsNormalizedUrlStatus,
   createIndexDownloadsStatusStartedAt,
+  createIndexJobLogsDownloadId,
+  createIndexJobLogsTimestamp,
 } from "./queries";
 import { log } from "@/lib/logger";
 
@@ -42,6 +45,7 @@ export class DownloadsDatabase {
     // Create tables
     this.db.run(createTableMedia);
     this.db.run(createTableDownloads);
+    this.db.run(createTableJobLogs);
 
     // Create indexes for better query performance
     this.db.run(createIndexMediaProviderId);
@@ -52,6 +56,8 @@ export class DownloadsDatabase {
     this.db.run(createIndexDownloadsProcessId);
     this.db.run(createIndexDownloadsNormalizedUrlStatus);
     this.db.run(createIndexDownloadsStatusStartedAt);
+    this.db.run(createIndexJobLogsDownloadId);
+    this.db.run(createIndexJobLogsTimestamp);
 
     log.info("💿 Downloads database initialized");
   }

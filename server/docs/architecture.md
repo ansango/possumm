@@ -24,7 +24,7 @@ graph TB
     subgraph Infrastructure["🔧 Infrastructure Layer"]
         SQLite[SQLite Repositories<br/>Implementaciones concretas]
         Cache[Cache Decorator<br/>CachedRepository]
-        Events[Event Emitter<br/>SSE System]
+        Logs[Download Logs<br/>REST API]
         Worker[Download Worker<br/>Background Processing]
     end
     
@@ -103,7 +103,8 @@ graph TB
 | [SQLiteDownloadRepository.ts](../src/core/infrastructure/downloads/SQLiteDownloadRepository.ts) | Implementación SQLite para downloads |
 | [SQLiteMediaRepository.ts](../src/core/infrastructure/downloads/SQLiteMediaRepository.ts) | Implementación SQLite para media |
 | [CachedDownloadRepository.ts](../src/core/infrastructure/cache/CachedDownloadRepository.ts) | Decorator con cache TTL |
-| [DownloadEventEmitter.ts](../src/core/infrastructure/events/DownloadEventEmitter.ts) | Sistema de eventos SSE |
+| [SQLiteDownloadLogRepository.ts](../src/core/infrastructure/downloads/SQLiteDownloadLogRepository.ts) | Repositorio de logs en SQLite |
+| [CachedDownloadLogRepository.ts](../src/core/infrastructure/cache/CachedDownloadLogRepository.ts) | Cache decorator para logs |
 | [DownloadWorker.ts](../src/core/application/download/worker/DownloadWorker.ts) | Worker background FIFO |
 
 **Características**:

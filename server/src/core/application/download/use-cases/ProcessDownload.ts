@@ -3,7 +3,7 @@ import { MediaRepository } from "@/core/domain/media/repositories/media-reposito
 import { DownloadExecutor } from "../services/DownloadExecutor";
 import { StorageService } from "../services/StorageService";
 import { MetadataExtractor } from "../services/MetadataExtractor";
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
+import { DownloadLogRepository } from "@/core/domain/download/repositories/download-log-repository";
 import { MediaItem } from "@/core/domain/media/entities/media";
 import type { PinoLogger } from "hono-pino";
 import { join } from "path";
@@ -27,6 +27,9 @@ import { join } from "path";
  * Called by DownloadWorker for automated processing of queued downloads.
  */
 export class ProcessDownload {
+  // Track last logged progress per download for 5% threshold throttling
+  private static lastLoggedProgress = new Map<number, number>();
+
   /**
    * Creates a new ProcessDownload use case.
    * 
@@ -35,7 +38,7 @@ export class ProcessDownload {
    * @param downloadExecutor - Service for executing yt-dlp downloads
    * @param storageService - Service for checking disk space
    * @param metadataExtractor - Service for extracting metadata
-   * @param eventEmitter - Event emitter for SSE notifications
+   * @param downloadLogRepo - Repository for logging download events
    * @param logger - Logger for structured logging
    * @param tempDir - Temporary directory for downloads
    * @param minStorageGB - Minimum required storage space in GB
@@ -46,7 +49,7 @@ export class ProcessDownload {
     private readonly downloadExecutor: DownloadExecutor,
     private readonly storageService: StorageService,
     private readonly metadataExtractor: MetadataExtractor,
-    private readonly eventEmitter: DownloadEventEmitter,
+    private readonly downloadLogRepo: DownloadLogRepository,
     private readonly logger: PinoLogger,
     private readonly tempDir: string,
     private readonly minStorageGB: number
@@ -142,20 +145,30 @@ export class ProcessDownload {
       const hasSpace = await this.storageService.hasEnoughSpace(this.tempDir, this.minStorageGB);
       if (!hasSpace) {
         const available = await this.storageService.checkAvailableSpace(this.tempDir);
-        this.eventEmitter.emitWithId("storage:low", { 
-          availableGB: available / (1024 ** 3), 
-          requiredGB: this.minStorageGB 
+        const availableGB = available / (1024 ** 3);
+        
+        await this.downloadLogRepo.create({
+          downloadId,
+          eventType: "storage:low",
+          message: `Insufficient storage: ${availableGB.toFixed(2)}GB available, ${this.minStorageGB}GB required`,
+          metadata: { availableGB, requiredGB: this.minStorageGB },
         });
+        
         throw new Error(`Insufficient storage space. Required: ${this.minStorageGB}GB`);
       }
 
       // Update status to in_progress
       await this.downloadRepo.updateStatus(downloadId, "in_progress", 0, null);
-      this.eventEmitter.emitWithId("download:started", {
+      
+      await this.downloadLogRepo.create({
         downloadId,
-        url: download.url,
-        status: "in_progress",
+        eventType: "download:started",
+        message: `Starting download: ${download.url}`,
+        metadata: { url: download.url },
       });
+
+      // Initialize progress tracking for this download
+      ProcessDownload.lastLoggedProgress.set(downloadId, 0);
 
       // Determine provider
       const provider = download.url.includes("bandcamp.com") ? "bandcamp" : "youtube";
@@ -170,8 +183,21 @@ export class ProcessDownload {
             this.logger.warn({ error: err, downloadId }, "Failed to update progress");
           });
 
-          // Emit progress event (throttled by event emitter)
-          this.eventEmitter.emitProgress(downloadId, progress, download.url);
+          // Log progress with 5% throttling
+          const lastProgress = ProcessDownload.lastLoggedProgress.get(downloadId) || 0;
+          const progressDelta = progress - lastProgress;
+          
+          if (progressDelta >= 5 || progress === 100) {
+            this.downloadLogRepo.create({
+              downloadId,
+              eventType: "download:progress",
+              message: `Download progress: ${progress}%`,
+              metadata: { progress },
+            }).catch((err) => {
+              this.logger.warn({ error: err, downloadId }, "Failed to log progress");
+            });
+            ProcessDownload.lastLoggedProgress.set(downloadId, progress);
+          }
         }
       );
 
@@ -195,12 +221,16 @@ export class ProcessDownload {
       );
 
       this.logger.info({ downloadId, filePath: result.filePath }, "Download completed");
-      this.eventEmitter.emitWithId("download:completed", {
+      
+      await this.downloadLogRepo.create({
         downloadId,
-        url: download.url,
-        status: "completed",
-        filePath: result.filePath,
+        eventType: "download:completed",
+        message: "Download completed successfully",
+        metadata: { filePath: result.filePath },
       });
+
+      // Cleanup progress tracking
+      ProcessDownload.lastLoggedProgress.delete(downloadId);
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       
@@ -212,12 +242,16 @@ export class ProcessDownload {
       );
 
       this.logger.error({ error, downloadId }, "Download failed");
-      this.eventEmitter.emitWithId("download:failed", {
+      
+      await this.downloadLogRepo.create({
         downloadId,
-        url: download.url,
-        status: "failed",
-        error: errorMessage,
+        eventType: "download:failed",
+        message: `Download failed: ${errorMessage}`,
+        metadata: { error: errorMessage },
       });
+
+      // Cleanup progress tracking
+      ProcessDownload.lastLoggedProgress.delete(downloadId);
 
       throw error;
     }

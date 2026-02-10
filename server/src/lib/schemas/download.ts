@@ -10,6 +10,19 @@ export const DownloadStatusEnum = z.enum([
   "stalled",
 ]);
 
+export const DownloadLogEventTypeEnum = z.enum([
+  "download:enqueued",
+  "download:started",
+  "download:progress",
+  "download:completed",
+  "download:failed",
+  "download:cancelled",
+  "download:stalled",
+  "storage:low",
+  "metadata:fetching",
+  "metadata:found",
+]);
+
 export const PlatformEnum = z.enum([
   "youtube",
   "soundcloud",
@@ -35,6 +48,11 @@ export const ListDownloadsQuerySchema = z.object({
   status: DownloadStatusEnum.optional(),
   page: z.string().optional().default("0").transform((val) => parseInt(val, 10)),
   pageSize: z.string().optional().default("20").transform((val) => parseInt(val, 10)),
+});
+
+export const GetDownloadLogsQuerySchema = z.object({
+  page: z.string().optional().default("1").transform((val) => Math.max(1, parseInt(val, 10))),
+  limit: z.string().optional().default("50").transform((val) => Math.min(100, Math.max(1, parseInt(val, 10)))),
 });
 
 export const SSEQuerySchema = z.object({
@@ -123,4 +141,24 @@ export const MediaSchema = z.object({
 export const MoveToDestinationResponseSchema = z.object({
   success: z.boolean(),
   destPath: z.string(),
+});
+
+// GetDownloadLogs response
+export const DownloadLogSchema = z.object({
+  id: z.number(),
+  downloadId: z.number(),
+  eventType: DownloadLogEventTypeEnum,
+  message: z.string(),
+  metadata: z.record(z.string(), z.any()).nullable(),
+  timestamp: z.coerce.date(),
+});
+
+export const GetDownloadLogsResponseSchema = z.object({
+  logs: z.array(DownloadLogSchema),
+  pagination: z.object({
+    page: z.number(),
+    limit: z.number(),
+    total: z.number(),
+    totalPages: z.number(),
+  }),
 });

@@ -8,6 +8,7 @@ const handlers = downloadHandlers.createDownloadHandlers({
   enqueueDownload: dependencies.useCases.enqueueDownload,
   getDownloadStatus: dependencies.useCases.getDownloadStatus,
   listDownloads: dependencies.useCases.listDownloads,
+  getDownloadLogs: dependencies.useCases.getDownloadLogs,
   cancelDownload: dependencies.useCases.cancelDownload,
   retryDownload: dependencies.useCases.retryDownload,
   moveToDestination: dependencies.useCases.moveToDestination,
@@ -26,6 +27,11 @@ const router = createRouter()
   .openapi(
     downloadRoutes.listDownloadsRoute,
     handlers.list,
+    downloadHandlers.downloadValidationHook
+  )
+  .openapi(
+    downloadRoutes.getDownloadLogsRoute,
+    handlers.getLogs,
     downloadHandlers.downloadValidationHook
   )
   .openapi(

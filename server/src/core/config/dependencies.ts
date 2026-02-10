@@ -5,8 +5,10 @@ import { mkdir } from "node:fs/promises";
 // Repositories
 import { SQLiteMediaRepository } from "@/core/infrastructure/downloads/SQLiteMediaRepository";
 import { SQLiteDownloadRepository } from "@/core/infrastructure/downloads/SQLiteDownloadRepository";
+import { SQLiteDownloadLogRepository } from "@/core/infrastructure/downloads/SQLiteDownloadLogRepository";
 import { CachedMediaRepository } from "@/core/infrastructure/cache/CachedMediaRepository";
 import { CachedDownloadRepository } from "@/core/infrastructure/cache/CachedDownloadRepository";
+import { CachedDownloadLogRepository } from "@/core/infrastructure/cache/CachedDownloadLogRepository";
 
 // Services
 import { UrlNormalizer } from "@/core/application/download/services/UrlNormalizer";
@@ -20,16 +22,17 @@ import { EnqueueDownload } from "@/core/application/download/use-cases/EnqueueDo
 import { ProcessDownload } from "@/core/application/download/use-cases/ProcessDownload";
 import { GetDownloadStatus } from "@/core/application/download/use-cases/GetDownloadStatus";
 import { ListDownloads } from "@/core/application/download/use-cases/ListDownloads";
+import { GetDownloadLogs } from "@/core/application/download/use-cases/GetDownloadLogs";
 import { GetMediaDetails } from "@/core/application/download/use-cases/GetMediaDetails";
 import { UpdateMediaMetadata } from "@/core/application/download/use-cases/UpdateMediaMetadata";
 import { MoveToDestination } from "@/core/application/download/use-cases/MoveToDestination";
 import { CancelDownload } from "@/core/application/download/use-cases/CancelDownload";
 import { RetryDownload } from "@/core/application/download/use-cases/RetryDownload";
 import { CleanupOrphanedFiles } from "@/core/application/download/use-cases/CleanupOrphanedFiles";
+import { CleanupOldLogs } from "@/core/application/download/use-cases/CleanupOldLogs";
 import { MarkStalledDownloads } from "@/core/application/download/use-cases/MarkStalledDownloads";
 
 // Infrastructure
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
 import { DownloadWorker } from "@/core/application/download/worker/DownloadWorker";
 import { cache } from "@/lib/db/cache";
 
@@ -40,14 +43,13 @@ interface AppConfig {
   maxPendingDownloads: number;
   cleanupRetentionDays: number;
   downloadTimeoutMinutes: number;
-  eventBufferSize: number;
-  progressThrottleMs: number;
 }
 
 export interface AppDependencies {
   repositories: {
     media: CachedMediaRepository;
     download: CachedDownloadRepository;
+    downloadLog: CachedDownloadLogRepository;
   };
   services: {
     urlNormalizer: UrlNormalizer;
@@ -61,15 +63,16 @@ export interface AppDependencies {
     processDownload: ProcessDownload;
     getDownloadStatus: GetDownloadStatus;
     listDownloads: ListDownloads;
+    getDownloadLogs: GetDownloadLogs;
     getMediaDetails: GetMediaDetails;
     updateMediaMetadata: UpdateMediaMetadata;
     moveToDestination: MoveToDestination;
     cancelDownload: CancelDownload;
     retryDownload: RetryDownload;
     cleanupOrphanedFiles: CleanupOrphanedFiles;
+    cleanupOldLogs: CleanupOldLogs;
     markStalledDownloads: MarkStalledDownloads;
   };
-  eventEmitter: DownloadEventEmitter;
   worker: DownloadWorker;
 }
 
@@ -77,10 +80,12 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
   // Create base repositories
   const sqliteMediaRepo = new SQLiteMediaRepository();
   const sqliteDownloadRepo = new SQLiteDownloadRepository();
+  const sqliteDownloadLogRepo = new SQLiteDownloadLogRepository();
 
   // Wrap with cache
   const mediaRepo = new CachedMediaRepository(sqliteMediaRepo);
   const downloadRepo = new CachedDownloadRepository(sqliteDownloadRepo);
+  const downloadLogRepo = new CachedDownloadLogRepository(sqliteDownloadLogRepo);
 
   // Create services
   const urlNormalizer = new UrlNormalizer();
@@ -89,12 +94,6 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
   const downloadExecutor = new DownloadExecutor(logger, config.downloadTempDir);
   const storageService = new StorageService();
 
-  // Create event emitter
-  const eventEmitter = new DownloadEventEmitter(
-    config.eventBufferSize,
-    config.progressThrottleMs
-  );
-
   // Create use cases - Operations
   const enqueueDownload = new EnqueueDownload(
     downloadRepo,
@@ -102,7 +101,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     urlNormalizer,
     platformDetector,
     metadataExtractor,
-    eventEmitter,
+    downloadLogRepo,
     logger,
     config.maxPendingDownloads
   );
@@ -113,7 +112,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     downloadExecutor,
     storageService,
     metadataExtractor,
-    eventEmitter,
+    downloadLogRepo,
     logger,
     config.downloadTempDir,
     config.minStorageGB
@@ -121,6 +120,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
 
   const getDownloadStatus = new GetDownloadStatus(downloadRepo, mediaRepo, logger);
   const listDownloads = new ListDownloads(downloadRepo, logger);
+  const getDownloadLogs = new GetDownloadLogs(downloadLogRepo, downloadRepo, logger);
   const getMediaDetails = new GetMediaDetails(mediaRepo, logger);
   const updateMediaMetadata = new UpdateMediaMetadata(mediaRepo, logger);
   const moveToDestination = new MoveToDestination(downloadRepo, logger, config.downloadDestDir);
@@ -129,11 +129,11 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
   const cancelDownload = new CancelDownload(
     downloadRepo,
     downloadExecutor,
-    eventEmitter,
+    downloadLogRepo,
     logger
   );
 
-  const retryDownload = new RetryDownload(downloadRepo, eventEmitter, logger);
+  const retryDownload = new RetryDownload(downloadRepo, downloadLogRepo, logger);
 
   const cleanupOrphanedFiles = new CleanupOrphanedFiles(
     downloadRepo,
@@ -142,9 +142,15 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     config.cleanupRetentionDays
   );
 
+  const cleanupOldLogs = new CleanupOldLogs(
+    downloadLogRepo,
+    logger,
+    90 // 90 days retention for logs
+  );
+
   const markStalledDownloads = new MarkStalledDownloads(
     downloadRepo,
-    eventEmitter,
+    downloadLogRepo,
     logger,
     config.downloadTimeoutMinutes
   );
@@ -154,6 +160,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     downloadRepo,
     processDownload,
     cleanupOrphanedFiles,
+    cleanupOldLogs,
     markStalledDownloads,
     logger,
     2000, // pollIntervalMs
@@ -165,6 +172,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     repositories: {
       media: mediaRepo,
       download: downloadRepo,
+      downloadLog: downloadLogRepo,
     },
     services: {
       urlNormalizer,
@@ -178,15 +186,16 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
       processDownload,
       getDownloadStatus,
       listDownloads,
+      getDownloadLogs,
       getMediaDetails,
       updateMediaMetadata,
       moveToDestination,
       cancelDownload,
       retryDownload,
       cleanupOrphanedFiles,
+      cleanupOldLogs,
       markStalledDownloads,
     },
-    eventEmitter,
     worker,
   };
 }
@@ -199,8 +208,6 @@ export function getDefaultConfig(): AppConfig {
     maxPendingDownloads: parseInt(process.env.MAX_PENDING_DOWNLOADS || "10", 10),
     cleanupRetentionDays: parseInt(process.env.CLEANUP_RETENTION_DAYS || "7", 10),
     downloadTimeoutMinutes: parseInt(process.env.DOWNLOAD_TIMEOUT_MINUTES || "60", 10),
-    eventBufferSize: parseInt(process.env.EVENT_BUFFER_SIZE || "100", 10),
-    progressThrottleMs: parseInt(process.env.PROGRESS_THROTTLE_MS || "500", 10),
   };
 }
 

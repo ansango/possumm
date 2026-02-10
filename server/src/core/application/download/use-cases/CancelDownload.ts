@@ -1,6 +1,6 @@
 import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
 import { DownloadExecutor } from "../services/DownloadExecutor";
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
+import { DownloadLogRepository } from "@/core/domain/download/repositories/download-log-repository";
 import type { PinoLogger } from "hono-pino";
 
 /**
@@ -19,13 +19,13 @@ export class CancelDownload {
    * 
    * @param downloadRepo - Download repository for status updates
    * @param downloadExecutor - Executor for process termination
-   * @param eventEmitter - Event emitter for notifications
+   * @param downloadLogRepo - Repository for logging download events
    * @param logger - Logger for structured logging
    */
   constructor(
     private readonly downloadRepo: DownloadRepository,
     private readonly downloadExecutor: DownloadExecutor,
-    private readonly eventEmitter: DownloadEventEmitter,
+    private readonly downloadLogRepo: DownloadLogRepository,
     private readonly logger: PinoLogger
   ) {}
 
@@ -98,14 +98,14 @@ export class CancelDownload {
       );
 
       this.logger.info({ downloadId }, "Download cancelled");
-      this.eventEmitter.emitWithId("download:cancelled", {
+      
+      // Log cancellation
+      await this.downloadLogRepo.create({
         downloadId,
-        url: download.url,
-        status: "cancelled",
+        eventType: "download:cancelled",
+        message: "Download cancelled by user",
+        metadata: { url: download.url },
       });
-
-      // Clear progress throttle for this download
-      this.eventEmitter.clearProgressThrottle(downloadId);
     } catch (error) {
       this.logger.error({ error, downloadId }, "Failed to cancel download");
       throw error;

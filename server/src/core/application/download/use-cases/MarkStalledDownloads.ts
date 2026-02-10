@@ -1,5 +1,5 @@
 import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
+import { DownloadLogRepository } from "@/core/domain/download/repositories/download-log-repository";
 import type { PinoLogger } from "hono-pino";
 
 /**
@@ -21,13 +21,13 @@ export class MarkStalledDownloads {
    * Creates a new MarkStalledDownloads use case.
    * 
    * @param downloadRepo - Download repository for queries and updates
-   * @param eventEmitter - Event emitter for stalled notifications
+   * @param downloadLogRepo - Repository for logging download events
    * @param logger - Logger for structured logging
    * @param timeoutMinutes - Timeout threshold in minutes (default 60)
    */
   constructor(
     private readonly downloadRepo: DownloadRepository,
-    private readonly eventEmitter: DownloadEventEmitter,
+    private readonly downloadLogRepo: DownloadLogRepository,
     private readonly logger: PinoLogger,
     private readonly timeoutMinutes: number = 60
   ) {}
@@ -90,11 +90,16 @@ export class MarkStalledDownloads {
             `Download stalled after ${this.timeoutMinutes} minutes`
           );
 
-          this.eventEmitter.emitWithId("download:stalled", {
+          // Log stalled event
+          await this.downloadLogRepo.create({
             downloadId: download.id!,
-            url: download.url,
-            status: "failed",
-            error: "Download timeout",
+            eventType: "download:stalled",
+            message: `Download stalled after ${this.timeoutMinutes} minutes of inactivity`,
+            metadata: { 
+              url: download.url,
+              progress: download.progress,
+              inactiveMinutes: this.timeoutMinutes,
+            },
           });
 
           this.logger.info({ downloadId: download.id }, "Marked stalled download as failed");

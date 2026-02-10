@@ -8,6 +8,8 @@ import {
   DownloadStatusResponseSchema,
   ListDownloadsQuerySchema,
   ListDownloadsResponseSchema,
+  GetDownloadLogsQuerySchema,
+  GetDownloadLogsResponseSchema,
   UpdateMediaMetadataSchema,
   MediaSchema,
   MoveToDestinationResponseSchema,
@@ -134,6 +136,43 @@ export const listDownloadsRoute = createRoute({
     },
     500: {
       description: "Internal server error when querying database.",
+      content: {
+        "application/json": {
+          schema: ErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+export const getDownloadLogsRoute = createRoute({
+  method: "get",
+  path: "/{id}/logs",
+  tags: ["Downloads"],
+  summary: "Get download logs",
+  request: {
+    params: IdParamSchema,
+    query: GetDownloadLogsQuerySchema,
+  },
+  responses: {
+    200: {
+      content: {
+        "application/json": {
+          schema: GetDownloadLogsResponseSchema,
+        },
+      },
+      description: "Download logs retrieved successfully. Returns paginated logs ordered by timestamp DESC (newest first). Supports pagination with query params ?page= (1-indexed, default: 1) and ?limit= (max: 100, default: 50). Includes eventType (download:enqueued, download:started, download:progress, download:completed, download:failed, download:cancelled, download:stalled, storage:low, metadata:fetching, metadata:found), descriptive message, optional metadata JSON object, and timestamp.",
+    },
+    400: {
+      description: "Invalid pagination params: page must be >= 1, limit must be 1-100.",
+      content: {
+        "application/json": {
+          schema: ErrorSchema,
+        },
+      },
+    },
+    404: {
+      description: "Download not found: no download exists with the specified ID.",
       content: {
         "application/json": {
           schema: ErrorSchema,
@@ -333,6 +372,7 @@ export const updateMediaMetadataRoute = createRoute({
 export type EnqueueDownloadRoute = typeof enqueueDownloadRoute;
 export type GetDownloadStatusRoute = typeof getDownloadStatusRoute;
 export type ListDownloadsRoute = typeof listDownloadsRoute;
+export type GetDownloadLogsRoute = typeof getDownloadLogsRoute;
 export type CancelDownloadRoute = typeof cancelDownloadRoute;
 export type RetryDownloadRoute = typeof retryDownloadRoute;
 export type MoveDownloadRoute = typeof moveDownloadRoute;

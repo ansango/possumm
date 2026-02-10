@@ -1,6 +1,7 @@
 import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
 import { ProcessDownload } from "../use-cases/ProcessDownload";
 import { CleanupOrphanedFiles } from "../use-cases/CleanupOrphanedFiles";
+import { CleanupOldLogs } from "../use-cases/CleanupOldLogs";
 import { MarkStalledDownloads } from "../use-cases/MarkStalledDownloads";
 import type { PinoLogger } from "hono-pino";
 
@@ -97,6 +98,7 @@ export class DownloadWorker {
    * @param downloadRepo - Download repository for queue polling
    * @param processDownload - Use case for download execution
    * @param cleanupOrphanedFiles - Use case for periodic cleanup
+   * @param cleanupOldLogs - Use case for periodic log cleanup
    * @param markStalledDownloads - Use case for stalled detection
    * @param logger - Logger for structured logging
    * @param pollIntervalMs - Queue poll interval (default 2000ms)
@@ -107,6 +109,7 @@ export class DownloadWorker {
     private readonly downloadRepo: DownloadRepository,
     private readonly processDownload: ProcessDownload,
     private readonly cleanupOrphanedFiles: CleanupOrphanedFiles,
+    private readonly cleanupOldLogs: CleanupOldLogs,
     private readonly markStalledDownloads: MarkStalledDownloads,
     private readonly logger: PinoLogger,
     private readonly pollIntervalMs: number = 2000,
@@ -347,8 +350,13 @@ export class DownloadWorker {
   private async runCleanup(): Promise<void> {
     this.logger.info("Running cleanup job");
     try {
-      const result = await this.cleanupOrphanedFiles.execute();
-      this.logger.info(result, "Cleanup completed");
+      // Cleanup orphaned files
+      const fileCleanupResult = await this.cleanupOrphanedFiles.execute();
+      this.logger.info(fileCleanupResult, "File cleanup completed");
+      
+      // Cleanup old logs
+      const deletedLogs = await this.cleanupOldLogs.execute();
+      this.logger.info({ deletedLogs }, "Log cleanup completed");
     } catch (error) {
       this.logger.error({ error }, "Cleanup job failed");
       throw error;

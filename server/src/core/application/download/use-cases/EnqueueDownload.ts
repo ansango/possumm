@@ -1,9 +1,9 @@
 import { MediaRepository } from "@/core/domain/media/repositories/media-repository";
 import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
+import { DownloadLogRepository } from "@/core/domain/download/repositories/download-log-repository";
 import { UrlNormalizer } from "../services/UrlNormalizer";
 import { PlatformDetector } from "../services/PlatformDetector";
 import { MetadataExtractor } from "../services/MetadataExtractor";
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
 import { MediaItem } from "@/core/domain/media/entities/media";
 import type { PinoLogger } from "hono-pino";
 
@@ -54,7 +54,7 @@ export class EnqueueDownload {
    * @param urlNormalizer - Service for URL normalization
    * @param platformDetector - Service for platform validation
    * @param metadataExtractor - Service for extracting media metadata
-   * @param eventEmitter - Event emitter for SSE notifications
+   * @param downloadLogRepo - Repository for logging download events
    * @param logger - Logger for structured logging
    * @param maxPending - Maximum number of pending downloads allowed (default: 10)
    */
@@ -64,7 +64,7 @@ export class EnqueueDownload {
     private readonly urlNormalizer: UrlNormalizer,
     private readonly platformDetector: PlatformDetector,
     private readonly metadataExtractor: MetadataExtractor,
-    private readonly eventEmitter: DownloadEventEmitter,
+    private readonly downloadLogRepo: DownloadLogRepository,
     private readonly logger: PinoLogger,
     private readonly maxPending: number = 10
   ) {}
@@ -149,11 +149,12 @@ export class EnqueueDownload {
 
     this.logger.info({ downloadId: download.id, url }, "Download enqueued");
 
-    // Emit enqueued event
-    this.eventEmitter.emitWithId("download:enqueued", {
+    // Log enqueued event
+    await this.downloadLogRepo.create({
       downloadId: download.id,
-      url,
-      status: "pending",
+      eventType: "download:enqueued",
+      message: `Download enqueued: ${url}`,
+      metadata: { url, provider },
     });
 
     // Extract metadata asynchronously (don't await)
@@ -192,6 +193,14 @@ export class EnqueueDownload {
     provider: "youtube" | "bandcamp"
   ): Promise<void> {
     try {
+      // Log metadata fetching
+      await this.downloadLogRepo.create({
+        downloadId,
+        eventType: "metadata:fetching",
+        message: `Fetching metadata from ${provider}`,
+        metadata: { provider, url },
+      });
+
       // Extract metadata
       const metadata = await this.metadataExtractor.extract(url, provider);
 
@@ -207,6 +216,23 @@ export class EnqueueDownload {
           MediaItem.fromYtDlpMetadata(metadata, provider)
         );
         this.logger.info({ mediaId: media.id, title: media.title }, "Media created");
+
+        // Log metadata found
+        const isPlaylist = metadata._type === "playlist";
+        const trackCount = metadata.entries ? metadata.entries.length : 1;
+        await this.downloadLogRepo.create({
+          downloadId,
+          eventType: "metadata:found",
+          message: isPlaylist
+            ? `Found ${trackCount} tracks in album "${metadata.title || 'Unknown'}"`
+            : `Found track "${metadata.title || 'Unknown'}"`,
+          metadata: { 
+            title: metadata.title, 
+            artist: metadata.artist || metadata.uploader,
+            trackCount,
+            isPlaylist
+          },
+        });
       }
 
       // Update download with media_id

@@ -75,3 +75,25 @@ export const createIndexDownloadsStatusStartedAt = `
   CREATE INDEX IF NOT EXISTS idx_downloads_status_started_at 
   ON downloads(status, started_at)
 `;
+
+export const createTableJobLogs = `
+  CREATE TABLE IF NOT EXISTS job_logs (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    download_id INTEGER NOT NULL,
+    event_type TEXT NOT NULL,
+    message TEXT NOT NULL,
+    metadata TEXT,
+    timestamp TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (download_id) REFERENCES downloads(id) ON DELETE CASCADE
+  )
+`;
+
+export const createIndexJobLogsDownloadId = `
+  CREATE INDEX IF NOT EXISTS idx_job_logs_download_id 
+  ON job_logs(download_id)
+`;
+
+export const createIndexJobLogsTimestamp = `
+  CREATE INDEX IF NOT EXISTS idx_job_logs_timestamp 
+  ON job_logs(timestamp)
+`;

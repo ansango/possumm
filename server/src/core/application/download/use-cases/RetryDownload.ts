@@ -1,5 +1,5 @@
 import { DownloadRepository } from "@/core/domain/download/repositories/download-repository";
-import { DownloadEventEmitter } from "@/core/infrastructure/events/DownloadEventEmitter";
+import { DownloadLogRepository } from "@/core/domain/download/repositories/download-log-repository";
 import type { PinoLogger } from "hono-pino";
 
 /**
@@ -17,12 +17,12 @@ export class RetryDownload {
    * Creates a new RetryDownload use case.
    * 
    * @param downloadRepo - Download repository for status updates
-   * @param eventEmitter - Event emitter for notifications
+   * @param downloadLogRepo - Repository for logging download events
    * @param logger - Logger for structured logging
    */
   constructor(
     private readonly downloadRepo: DownloadRepository,
-    private readonly eventEmitter: DownloadEventEmitter,
+    private readonly downloadLogRepo: DownloadLogRepository,
     private readonly logger: PinoLogger
   ) {}
 
