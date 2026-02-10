@@ -11,7 +11,7 @@ const router = (app: OpenAPIHono) => {
   routes.forEach((route) => {
     app.route("/", route);
   });
-  app.route("/download/events", sse);
+  app.route("/api/events", sse);
 };
 
 export default router;
