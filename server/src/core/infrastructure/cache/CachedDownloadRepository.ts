@@ -9,7 +9,7 @@ import { withCache } from "@/lib/db/cache/utils";
  * Wraps any DownloadRepository implementation with automatic caching.
  * 
  * Caching strategy:
- * - Read operations: Cached with 30-second TTL
+ * - Read operations: Cached with 5-second TTL for real-time data
  * - Write operations: No caching (pass-through)
  * - Real-time queries: No caching (findNextPending, cleanup queries)
  * 
@@ -19,11 +19,11 @@ import { withCache } from "@/lib/db/cache/utils";
  * - `downloads:list:{page}:{pageSize}[:{status}]` - Paginated lists
  * - `downloads:count[:{status}]` - Count queries
  * 
- * Short TTL (30s) ensures relatively fresh data while reducing database load
+ * Short TTL (5s) ensures near real-time data while reducing database load
  * for frequently accessed downloads (progress polling, status checks).
  * 
  * Cache invalidation is implicit via TTL - no manual invalidation on writes.
- * This means cached data may be stale for up to 30 seconds.
+ * This means cached data may be stale for up to 5 seconds.
  * 
  * @example
  * ```typescript
@@ -33,7 +33,7 @@ import { withCache } from "@/lib/db/cache/utils";
  * // First call: cache miss, hits database
  * const download1 = await cachedRepo.findById(42);
  * 
- * // Second call within 30s: cache hit, no database query
+ * // Second call within 5s: cache hit, no database query
  * const download2 = await cachedRepo.findById(42);
  * 
  * // Write operations always hit database
@@ -65,7 +65,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       `downloads:${id}`,
       () => this.repository.findById(id),
-      30 * 1000 // 30 seconds
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 
@@ -86,7 +86,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       `downloads:active-url:${normalizedUrl}`,
       () => this.repository.findActiveByNormalizedUrl(normalizedUrl),
-      30 * 1000
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 
@@ -98,7 +98,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       `downloads:list:${page}:${pageSize}:${status}`,
       () => this.repository.findByStatus(status, page, pageSize),
-      30 * 1000
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 
@@ -106,7 +106,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       `downloads:list:${page}:${pageSize}`,
       () => this.repository.findAll(page, pageSize),
-      30 * 1000
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 
@@ -124,7 +124,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       "downloads:count",
       () => this.repository.countAll(),
-      30 * 1000
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 
@@ -132,7 +132,7 @@ export class CachedDownloadRepository implements DownloadRepository {
     return withCache(
       `downloads:count:${status}`,
       () => this.repository.countByStatus(status),
-      30 * 1000
+      5 * 1000 // 5 seconds - real-time data
     );
   }
 

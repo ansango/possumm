@@ -23,6 +23,11 @@
 
 			return response.json();
 		},
+        onMutate:() => {
+            isSubmitting = true;
+            queryClient.cancelQueries({ queryKey: ['downloads'] });
+            
+        },
 		onSuccess: () => {
 			// Revalidar las descargas
 			queryClient.invalidateQueries({ queryKey: ['downloads'] });

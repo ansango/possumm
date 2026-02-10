@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { createQuery } from '@tanstack/svelte-query';
 	import type { DownloadLogsResponse } from '$lib/types/download-log';
+	import type { Download } from '$lib/types/download';
 
 	let {
 		downloadId,
@@ -9,6 +10,34 @@
 	}: { downloadId: number; page?: number; limit?: number } = $props();
 
 	let logContainer = $state<HTMLDivElement>();
+
+	// Query to get download status
+	const downloadQuery = createQuery(() => ({
+		queryKey: ['download', downloadId],
+		queryFn: async (): Promise<{ download: Download }> => {
+			const response = await fetch(`http://localhost:3000/api/downloads/${downloadId}`);
+
+			if (!response.ok) {
+				throw new Error(`Failed to fetch download: ${response.statusText}`);
+			}
+
+			return response.json();
+		},
+		refetchInterval: (query) => {
+			const download = query.state.data?.download;
+			// Only refetch if status is not completed, failed, or cancelled
+			if (
+				download &&
+				download.status !== 'completed' &&
+				download.status !== 'failed' &&
+				download.status !== 'cancelled'
+			) {
+				return 5000;
+			}
+			return false;
+		},
+		refetchIntervalInBackground: true
+	}));
 
 	const logsQuery = createQuery(() => ({
 		queryKey: ['download-logs', downloadId, { page, limit }],
@@ -23,7 +52,19 @@
 
 			return response.json();
 		},
-		refetchInterval: 5000, // Poll every 5 seconds
+		refetchInterval: () => {
+			const download = downloadQuery.data?.download;
+			// Only refetch if status is not completed, failed, or cancelled
+			if (
+				download &&
+				download.status !== 'completed' &&
+				download.status !== 'failed' &&
+				download.status !== 'cancelled'
+			) {
+				return 5000;
+			}
+			return false;
+		},
 		refetchIntervalInBackground: true
 	}));
 

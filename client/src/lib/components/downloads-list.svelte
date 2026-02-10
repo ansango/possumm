@@ -36,7 +36,21 @@
 			const nextPage = lastPage.page + 1;
 			const totalPages = Math.ceil(lastPage.total / lastPage.pageSize);
 			return nextPage < totalPages ? nextPage : undefined;
-		}
+		},
+		refetchInterval: (query) => {
+			// Check if there are any active downloads (not completed, failed, or cancelled)
+			const allDownloads = query.state.data?.pages.flatMap((page) => page.downloads) || [];
+			const hasActiveDownloads = allDownloads.some(
+				(download) =>
+					download.status !== 'completed' &&
+					download.status !== 'failed' &&
+					download.status !== 'cancelled'
+			);
+
+			// Only refetch if there are active downloads
+			return hasActiveDownloads ? 5000 : false;
+		},
+		refetchIntervalInBackground: true
 	}));
 
 	function handleScroll() {
@@ -76,7 +90,7 @@
 	{:else if downloadsQuery.data}
 		{@const allDownloads = downloadsQuery.data.pages.flatMap((page) => page.downloads)}
 		{@const firstPage = downloadsQuery.data.pages[0]}
-		
+
 		<div class="downloads-header">
 			<h2>Downloads ({firstPage?.total || 0})</h2>
 		</div>
@@ -127,7 +141,7 @@
 						</div>
 					</button>
 				{/each}
-				
+
 				{#if downloadsQuery.isFetchingNextPage}
 					<div class="loading-more">Loading more...</div>
 				{/if}

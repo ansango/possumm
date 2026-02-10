@@ -9,7 +9,7 @@ import { withCache } from "@/lib/db/cache/utils";
  * 
  * Caching strategy:
  * - No cache on writes (create, delete)
- * - 30s cache on read queries
+ * - 10s cache on read queries (logs update less frequently than downloads)
  */
 export class CachedDownloadLogRepository implements DownloadLogRepository {
   constructor(private readonly repository: DownloadLogRepository) {}
@@ -23,7 +23,7 @@ export class CachedDownloadLogRepository implements DownloadLogRepository {
     return withCache(
       `download-logs:${downloadId}:${page}:${pageSize}`,
       () => this.repository.findByDownloadId(downloadId, page, pageSize),
-      30 * 1000 // 30 seconds
+      10 * 1000 // 10 seconds - logs update less frequently
     );
   }
 
@@ -31,7 +31,7 @@ export class CachedDownloadLogRepository implements DownloadLogRepository {
     return withCache(
       `download-logs:${downloadId}:count`,
       () => this.repository.countByDownloadId(downloadId),
-      30 * 1000
+      10 * 1000 // 10 seconds - logs update less frequently
     );
   }
 
