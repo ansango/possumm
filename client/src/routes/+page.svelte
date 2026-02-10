@@ -1,4 +1,6 @@
 <script lang="ts">
+	import DownloadsList from '$lib/components/downloads-list.svelte';
+
 	let url = $state('');
 	let logs = $state<string[]>([]);
 	let isLoading = $state(false);
@@ -88,6 +90,8 @@
 			</div>
 		{/each}
 	</div>
+
+	<DownloadsList />
 </div>
 
 <style>
