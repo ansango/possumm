@@ -88,13 +88,13 @@ export class GetDownloadLogs {
 
     // Calculate pagination
     const totalPages = Math.ceil(total / normalizedLimit);
-    const offset = (normalizedPage - 1) * normalizedLimit;
+    const pageIndex = normalizedPage - 1; // Convert to 0-indexed
 
-    // Get logs
+    // Get logs (repository expects: downloadId, page, pageSize)
     const logs = await this.downloadLogRepo.findByDownloadId(
       downloadId,
-      normalizedLimit,
-      offset
+      pageIndex,
+      normalizedLimit
     );
 
     this.logger.debug(
