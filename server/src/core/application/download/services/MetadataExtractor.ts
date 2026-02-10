@@ -117,11 +117,15 @@ export class MetadataExtractor {
         stderr: "pipe",
       });
 
-      const output = await new Response(process.stdout).text();
+      // Capture both streams before checking exit code
+      const [output, errorOutput] = await Promise.all([
+        new Response(process.stdout).text(),
+        new Response(process.stderr).text(),
+      ]);
+      
       const exitCode = await process.exited;
 
       if (exitCode !== 0) {
-        const errorOutput = await new Response(process.stderr).text();
         this.logger.error({ exitCode, error: errorOutput }, "yt-dlp metadata extraction failed");
         throw new Error(`Failed to extract metadata: ${errorOutput}`);
       }

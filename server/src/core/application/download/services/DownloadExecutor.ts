@@ -207,12 +207,13 @@ export class DownloadExecutor {
 
     this.logger.info({ processId }, "Download process started");
 
-    // Parse stderr for progress
+    // Parse stderr for progress and capture full output
     const progressRegex = /\[download\]\s+(\d+\.?\d*)%/;
     
     // Read stderr in chunks
     const reader = process.stderr.getReader();
     const decoder = new TextDecoder();
+    let stderrOutput = ""; // Capture full stderr for error reporting
     
     const readStderr = async () => {
       try {
@@ -221,6 +222,7 @@ export class DownloadExecutor {
           if (done) break;
           
           const text = decoder.decode(value, { stream: true });
+          stderrOutput += text; // Accumulate stderr output
           const lines = text.split("\n");
           
           for (const line of lines) {
@@ -236,16 +238,15 @@ export class DownloadExecutor {
       }
     };
 
-    // Start reading stderr asynchronously
-    readStderr();
+    // Wait for stderr reading to complete
+    await readStderr();
 
     const exitCode = await process.exited;
     this.activeProcesses.delete(processId);
 
     if (exitCode !== 0) {
-      const errorOutput = await new Response(process.stderr).text();
-      this.logger.error({ exitCode, error: errorOutput }, "Download failed");
-      throw new Error(`Download failed with exit code ${exitCode}: ${errorOutput}`);
+      this.logger.error({ exitCode, error: stderrOutput }, "Download failed");
+      throw new Error(`Download failed with exit code ${exitCode}: ${stderrOutput || 'Unknown error'}`);
     }
 
     // Report 100% on success
