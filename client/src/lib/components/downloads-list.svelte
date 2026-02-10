@@ -4,8 +4,13 @@
 
 	let {
 		status,
-		pageSize = 20
-	}: { status?: DownloadStatus; pageSize?: number } = $props();
+		pageSize = 20,
+		onclick
+	}: {
+		status?: DownloadStatus;
+		pageSize?: number;
+		onclick?: (downloadId: number) => void;
+	} = $props();
 
 	let scrollContainer = $state<HTMLDivElement>();
 
@@ -81,7 +86,12 @@
 		{:else}
 			<div class="downloads-grid" bind:this={scrollContainer}>
 				{#each allDownloads as download (download.id)}
-					<div class="download-card" data-status={download.status}>
+					<button
+						class="download-card"
+						data-status={download.status}
+						onclick={() => onclick?.(download.id)}
+						type="button"
+					>
 						<div class="download-header">
 							<span class="download-id">#{download.id}</span>
 							<span class="download-status status-{download.status}">{download.status}</span>
@@ -115,7 +125,7 @@
 								<span>Finished: {new Date(download.finishedAt).toLocaleString()}</span>
 							{/if}
 						</div>
-					</div>
+					</button>
 				{/each}
 				
 				{#if downloadsQuery.isFetchingNextPage}
@@ -166,15 +176,21 @@
 	}
 
 	.download-card {
+		width: 100%;
 		background: white;
 		border: 2px solid #e5e7eb;
 		border-radius: 8px;
 		padding: 1rem;
-		transition: border-color 0.2s;
+		transition: all 0.2s;
+		cursor: pointer;
+		text-align: left;
+		font: inherit;
 	}
 
 	.download-card:hover {
 		border-color: #9ca3af;
+		transform: translateY(-2px);
+		box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
 	}
 
 	.download-card[data-status='completed'] {
