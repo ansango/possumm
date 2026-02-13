@@ -36,11 +36,11 @@
 		stalled: 'text-orange-500'
 	};
 
-	const ACTION_BUTTONS: Partial<Record<Download['status'], { icon: ComponentType; size: string }>> =
+	const ACTION_BUTTONS: Partial<Record<Download['status'], { Icon: ComponentType; size: string }>> =
 		{
-			completed: { icon: FolderOpen, size: 'size-4' },
-			failed: { icon: RotateCw, size: 'size-4' },
-			downloading: { icon: XCircle, size: 'size-4' }
+			completed: { Icon: FolderOpen, size: 'size-4' },
+			failed: { Icon: RotateCw, size: 'size-4' },
+			downloading: { Icon: XCircle, size: 'size-4' }
 		};
 
 	function extractTitle(url: string): string {
@@ -70,7 +70,7 @@
 	const title = $derived(extractTitle(download.url));
 	const artist = $derived(extractArtist(download.url));
 	const showProgress = $derived(download.status === 'downloading' || download.status === 'pending');
-	const actionButton = $derived(ACTION_BUTTONS[download.status]);
+	const ActionButton = $derived(ACTION_BUTTONS[download.status]);
 </script>
 
 <Item.Root variant="outline" class="transition-all hover:bg-accent/50">
@@ -104,10 +104,9 @@
 				{/if}
 
 				<div class="flex items-center gap-1">
-					{#if actionButton}
-						{@const ActionIcon = actionButton.icon}
+					{#if ActionButton}
 						<Button variant="ghost" size="icon" class="size-8">
-							<ActionIcon class={actionButton.size} />
+							<ActionButton.Icon class={ActionButton.size} />
 						</Button>
 					{:else}
 						<StatusIcon class={`size-5 ${statusColor}`} />
