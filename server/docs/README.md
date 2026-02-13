@@ -14,22 +14,22 @@ graph LR
         A[HTTP POST /downloads]
         B[SSE /downloads/events]
     end
-    
+
     subgraph API
         C[EnqueueDownload]
         D[DownloadEventEmitter]
     end
-    
+
     subgraph Cola/Worker
         E[FIFO Queue]
         F[ProcessDownload]
     end
-    
+
     subgraph Almacenamiento
         G[Temp Directory]
         H[Destination Path]
     end
-    
+
     A --> C
     C --> E
     C --> D
@@ -42,14 +42,14 @@ graph LR
 
 ## Tabla de Contenidos
 
-| Documento | Descripción |
-|-----------|-------------|
-| [architecture.md](architecture.md) | Capas DDD, dependencias y responsabilidades de cada layer |
-| [domain-model.md](domain-model.md) | Entidades DownloadItem y MediaItem, relaciones ER, máquina de estados |
-| [workflows.md](workflows.md) | 6 flujos principales con diagramas de secuencia y snippets TypeScript |
-| [infrastructure.md](infrastructure.md) | Patrón Decorator para caché, esquema SQL, Worker con schedulers |
-| [services.md](services.md) | 5 servicios de aplicación con diagramas de actividad y lógica core |
-| [sse-system.md](sse-system.md) | Sistema SSE con buffer circular, throttling, y mecanismo de recuperación |
+| Documento                              | Descripción                                                              |
+| -------------------------------------- | ------------------------------------------------------------------------ |
+| [architecture.md](architecture.md)     | Capas DDD, dependencias y responsabilidades de cada layer                |
+| [domain-model.md](domain-model.md)     | Entidades DownloadItem y MediaItem, relaciones ER, máquina de estados    |
+| [workflows.md](workflows.md)           | 6 flujos principales con diagramas de secuencia y snippets TypeScript    |
+| [infrastructure.md](infrastructure.md) | Patrón Decorator para caché, esquema SQL, Worker con schedulers          |
+| [services.md](services.md)             | 5 servicios de aplicación con diagramas de actividad y lógica core       |
+| [sse-system.md](sse-system.md)         | Sistema SSE con buffer circular, throttling, y mecanismo de recuperación |
 
 ## Architecture Highlights
 
@@ -86,6 +86,7 @@ Mermaid             Generación de diagramas en markdown
 💡 **Escalabilidad:** Para cargas >100 descargas simultáneas evaluar migrar a queue distribuida (BullMQ + Redis)
 
 ✅ **Monitoring:** Implementar métricas Prometheus para tracking de:
+
 - Tiempo promedio de descarga por provider
 - Ratio success/failed downloads
 - Tamaño buffer SSE (detectar memory leaks)

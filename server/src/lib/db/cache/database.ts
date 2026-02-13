@@ -1,156 +1,155 @@
-import { Database } from "bun:sqlite";
-import { existsSync, statSync, mkdirSync } from "fs";
-import { resolve, dirname } from "path";
+import { Database } from 'bun:sqlite';
+import { existsSync, statSync, mkdirSync } from 'fs';
+import { resolve, dirname } from 'path';
 
 import {
-  createTable,
-  countAll,
-  createExpiryIndex,
-  deleteAll,
-  deleteByKey,
-  deleteExpired,
-  findAllValid,
-  findByKey,
-  findExpiryByKey,
-  insertCache,
-  countExpired,
-} from "./queries";
-import { log } from "@/lib/logger";
+	createTable,
+	countAll,
+	createExpiryIndex,
+	deleteAll,
+	deleteByKey,
+	deleteExpired,
+	findAllValid,
+	findByKey,
+	findExpiryByKey,
+	insertCache,
+	countExpired
+} from './queries';
+import { log } from '@/lib/logger';
 
-
-const DB_PATH = "./data/.cache.db";
+const DB_PATH = './data/.cache.db';
 
 export interface CacheEntry {
-  key: string;
-  value: string;
-  expiry: number;
+	key: string;
+	value: string;
+	expiry: number;
 }
 
 export interface CacheRow {
-  value: string;
-  expiry: number;
+	value: string;
+	expiry: number;
 }
 
 export class CacheDatabase {
-  private static instance: CacheDatabase;
-  private db: Database;
+	private static instance: CacheDatabase;
+	private db: Database;
 
-  private constructor() {
-    const resolvedPath = resolve(DB_PATH);
+	private constructor() {
+		const resolvedPath = resolve(DB_PATH);
 
-    // Ensure directory exists
-    const dir = dirname(resolvedPath);
-    if (!existsSync(dir)) {
-      mkdirSync(dir, { recursive: true });
-    }
+		// Ensure directory exists
+		const dir = dirname(resolvedPath);
+		if (!existsSync(dir)) {
+			mkdirSync(dir, { recursive: true });
+		}
 
-    this.db = new Database(resolvedPath, { create: true });
+		this.db = new Database(resolvedPath, { create: true });
 
-    // Enable WAL mode for better concurrency
-    this.db.run("PRAGMA journal_mode = WAL;");
-    this.db.run("PRAGMA synchronous = NORMAL");
+		// Enable WAL mode for better concurrency
+		this.db.run('PRAGMA journal_mode = WAL;');
+		this.db.run('PRAGMA synchronous = NORMAL');
 
-    // Initialize schema
-    this.initializeSchema();
-    
-    log.info("💾 Cache database initialized");
-  }
+		// Initialize schema
+		this.initializeSchema();
 
-  private initializeSchema(): void {
-    // Create table if not exists
-    this.db.run(createTable);
+		log.info('💾 Cache database initialized');
+	}
 
-    // Create index on expiry for efficient cleanup
-    this.db.run(createExpiryIndex);
-  }
+	private initializeSchema(): void {
+		// Create table if not exists
+		this.db.run(createTable);
 
-  public static getInstance(): CacheDatabase {
-    if (!CacheDatabase.instance) {
-      CacheDatabase.instance = new CacheDatabase();
-    }
-    return CacheDatabase.instance;
-  }
+		// Create index on expiry for efficient cleanup
+		this.db.run(createExpiryIndex);
+	}
 
-  public getDatabase(): Database {
-    return this.db;
-  }
+	public static getInstance(): CacheDatabase {
+		if (!CacheDatabase.instance) {
+			CacheDatabase.instance = new CacheDatabase();
+		}
+		return CacheDatabase.instance;
+	}
 
-  insert(key: string, value: string, expiry: number): void {
-    const stmt = this.db.prepare(insertCache);
-    stmt.run(key, value, expiry);
-  }
+	public getDatabase(): Database {
+		return this.db;
+	}
 
-  findByKey(key: string): CacheRow | null {
-    const stmt = this.db.prepare(findByKey);
-    return stmt.get(key) as CacheRow | null;
-  }
+	insert(key: string, value: string, expiry: number): void {
+		const stmt = this.db.prepare(insertCache);
+		stmt.run(key, value, expiry);
+	}
 
-  findAllValid(currentTime: number): CacheRow[] {
-    const stmt = this.db.prepare(findAllValid);
-    return stmt.all(currentTime) as CacheRow[];
-  }
+	findByKey(key: string): CacheRow | null {
+		const stmt = this.db.prepare(findByKey);
+		return stmt.get(key) as CacheRow | null;
+	}
 
-  findExpiryByKey(key: string): number | null {
-    const stmt = this.db.prepare(findExpiryByKey);
-    const row = stmt.get(key) as { expiry: number } | null;
-    return row ? row.expiry : null;
-  }
+	findAllValid(currentTime: number): CacheRow[] {
+		const stmt = this.db.prepare(findAllValid);
+		return stmt.all(currentTime) as CacheRow[];
+	}
 
-  deleteByKey(key: string): void {
-    const stmt = this.db.prepare(deleteByKey);
-    stmt.run(key);
-  }
+	findExpiryByKey(key: string): number | null {
+		const stmt = this.db.prepare(findExpiryByKey);
+		const row = stmt.get(key) as { expiry: number } | null;
+		return row ? row.expiry : null;
+	}
 
-  deleteAll(): void {
-    this.db.run(deleteAll);
-  }
+	deleteByKey(key: string): void {
+		const stmt = this.db.prepare(deleteByKey);
+		stmt.run(key);
+	}
 
-  deleteExpired(currentTime: number): number {
-    const stmt = this.db.prepare(deleteExpired);
-    const result = stmt.run(currentTime);
-    return result.changes;
-  }
+	deleteAll(): void {
+		this.db.run(deleteAll);
+	}
 
-  countAll(): number {
-    const stmt = this.db.prepare(countAll);
-    const row = stmt.get() as { count: number };
-    return row.count;
-  }
+	deleteExpired(currentTime: number): number {
+		const stmt = this.db.prepare(deleteExpired);
+		const result = stmt.run(currentTime);
+		return result.changes;
+	}
 
-  countExpired(currentTime: number): number {
-    const stmt = this.db.prepare(countExpired);
-    const row = stmt.get(currentTime) as { count: number };
-    return row.count;
-  }
+	countAll(): number {
+		const stmt = this.db.prepare(countAll);
+		const row = stmt.get() as { count: number };
+		return row.count;
+	}
 
-  getFilePath(): string {
-    return this.db.filename;
-  }
+	countExpired(currentTime: number): number {
+		const stmt = this.db.prepare(countExpired);
+		const row = stmt.get(currentTime) as { count: number };
+		return row.count;
+	}
 
-  getFileSize(): string {
-    try {
-      const dbPath = this.db.filename;
-      if (existsSync(dbPath)) {
-        const stats = statSync(dbPath);
-        const bytes = stats.size;
-        if (bytes < 1024) {
-          return `${bytes} B`;
-        } else if (bytes < 1024 * 1024) {
-          return `${(bytes / 1024).toFixed(2)} KB`;
-        } else {
-          return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
-        }
-      }
-    } catch (error) {
-      // Ignore errors
-    }
-    return "0 B";
-  }
+	getFilePath(): string {
+		return this.db.filename;
+	}
 
-  close(): void {
-    this.db.close();
-    log.info("💾 Cache database closed");
-  }
+	getFileSize(): string {
+		try {
+			const dbPath = this.db.filename;
+			if (existsSync(dbPath)) {
+				const stats = statSync(dbPath);
+				const bytes = stats.size;
+				if (bytes < 1024) {
+					return `${bytes} B`;
+				} else if (bytes < 1024 * 1024) {
+					return `${(bytes / 1024).toFixed(2)} KB`;
+				} else {
+					return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
+				}
+			}
+		} catch (error) {
+			// Ignore errors
+		}
+		return '0 B';
+	}
+
+	close(): void {
+		this.db.close();
+		log.info('💾 Cache database closed');
+	}
 }
 
 // Export singleton instance and backwards compatibility helpers

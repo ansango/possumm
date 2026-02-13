@@ -7,7 +7,7 @@ Este documento describe las entidades del dominio, sus relaciones y el ciclo de 
 ```mermaid
 erDiagram
     DOWNLOAD }o--|| MEDIA : "media_id (nullable)"
-    
+
     DOWNLOAD {
         int id PK
         string url
@@ -22,7 +22,7 @@ erDiagram
         datetime startedAt "nullable"
         datetime finishedAt "nullable"
     }
-    
+
     MEDIA {
         int id PK
         string title "nullable"
@@ -43,31 +43,31 @@ erDiagram
 ```mermaid
 stateDiagram-v2
     [*] --> pending: Enqueue (Usuario)
-    
+
     pending --> in_progress: Worker poll FIFO
     pending --> cancelled: Cancelar (Usuario)
-    
+
     in_progress --> completed: yt-dlp éxito
     in_progress --> failed: yt-dlp error
     in_progress --> cancelled: Cancelar (Usuario)
     in_progress --> failed: Timeout 60min
-    
+
     completed --> [*]
     failed --> pending: Retry (Usuario)
     cancelled --> pending: Retry (Usuario)
     failed --> [*]
     cancelled --> [*]
-    
+
     note right of pending
         Queue FIFO
         Max 10 simultáneos
     end note
-    
+
     note right of in_progress
         Process ID tracked
         Progress 0-99%
     end note
-    
+
     note right of completed
         Progress 100%
         File path set
@@ -76,16 +76,16 @@ stateDiagram-v2
 
 ### Transiciones
 
-| Estado | Siguiente Estado | Trigger | Actor |
-|--------|-----------------|---------|-------|
-| `pending` | `in_progress` | Worker poll con `findNextPending()` | Worker |
-| `pending` | `cancelled` | Usuario invoca `CancelDownload` | Usuario |
-| `in_progress` | `completed` | Proceso yt-dlp exit code 0 | DownloadExecutor |
-| `in_progress` | `failed` | Proceso yt-dlp exit code != 0 | DownloadExecutor |
-| `in_progress` | `failed` | Scheduler detecta timeout >60min | Scheduler |
-| `in_progress` | `cancelled` | Usuario invoca `CancelDownload` + kill process | Usuario |
-| `failed` | `pending` | Usuario invoca `RetryDownload` | Usuario |
-| `cancelled` | `pending` | Usuario invoca `RetryDownload` | Usuario |
+| Estado        | Siguiente Estado | Trigger                                        | Actor            |
+| ------------- | ---------------- | ---------------------------------------------- | ---------------- |
+| `pending`     | `in_progress`    | Worker poll con `findNextPending()`            | Worker           |
+| `pending`     | `cancelled`      | Usuario invoca `CancelDownload`                | Usuario          |
+| `in_progress` | `completed`      | Proceso yt-dlp exit code 0                     | DownloadExecutor |
+| `in_progress` | `failed`         | Proceso yt-dlp exit code != 0                  | DownloadExecutor |
+| `in_progress` | `failed`         | Scheduler detecta timeout >60min               | Scheduler        |
+| `in_progress` | `cancelled`      | Usuario invoca `CancelDownload` + kill process | Usuario          |
+| `failed`      | `pending`        | Usuario invoca `RetryDownload`                 | Usuario          |
+| `cancelled`   | `pending`        | Usuario invoca `RetryDownload`                 | Usuario          |
 
 ## Entidad: MediaItem
 
@@ -128,14 +128,14 @@ Este factory demuestra la **tolerancia a metadata incompleta**: todos los campos
 ```typescript
 // Metadata real de Bandcamp puede faltar artist
 const bandcampData = {
-  id: 'xyz789',
-  title: 'Album Name',
-  // artist: undefined (no proporcionado)
-  thumbnail: 'https://f4.bcbits.com/img/...',
-  entries: [
-    { title: 'Track 1', duration: 180 },
-    { title: 'Track 2', duration: null }  // sin duration
-  ]
+	id: 'xyz789',
+	title: 'Album Name',
+	// artist: undefined (no proporcionado)
+	thumbnail: 'https://f4.bcbits.com/img/...',
+	entries: [
+		{ title: 'Track 1', duration: 180 },
+		{ title: 'Track 2', duration: null } // sin duration
+	]
 };
 
 const media = MediaItem.fromYtDlpMetadata(bandcampData, 'bandcamp');
@@ -158,6 +158,7 @@ const media = MediaItem.fromYtDlpMetadata(bandcampData, 'bandcamp');
 ---
 
 **Ver también**:
+
 - [Arquitectura](architecture.md) - Capas DDD y responsabilidades
 - [Infrastructure](infrastructure.md#esquema-base-de-datos) - Schema SQL completo con índices
 - [Workflows](workflows.md) - Flujos de operaciones que usan estas entidades

@@ -11,19 +11,19 @@ sequenceDiagram
     participant UseCase as GetDownloadLogs
     participant Repo as LogRepository
     participant DB as SQLite (job_logs)
-    
+
     Cliente->>Handler: GET /downloads/:id/logs?page=1&limit=50
     Handler->>UseCase: execute(downloadId, page, limit)
     UseCase->>Repo: findByDownloadId(id, limit, offset)
     Repo->>DB: SELECT * FROM job_logs<br/>WHERE download_id = ?<br/>ORDER BY timestamp DESC
     DB-->>Repo: Logs rows
     Repo-->>UseCase: DownloadLog[]
-    
+
     UseCase->>Repo: countByDownloadId(id)
     Repo->>DB: SELECT COUNT(*) FROM job_logs
     DB-->>Repo: Total count
     Repo-->>UseCase: Total
-    
+
     UseCase-->>Handler: {logs, pagination}
     Handler-->>Cliente: JSON response
 ```
@@ -40,42 +40,42 @@ classDiagram
         +metadata: JSON
         +timestamp: Date
     }
-    
+
     class DownloadLogRepository {
         +create(log): Promise<DownloadLog>
         +findByDownloadId(id, limit, offset): Promise<DownloadLog[]>
         +countByDownloadId(id): Promise<number>
         +deleteOldLogs(days): Promise<number>
     }
-    
+
     class CachedDownloadLogRepository {
         -cache: Cache
         -ttl: 30s
         +create(log): Promise<DownloadLog>
         +findByDownloadId(): Promise<DownloadLog[]> [cached]
     }
-    
+
     DownloadLogRepository <|-- CachedDownloadLogRepository
     CachedDownloadLogRepository --> DownloadLog : returns
-    
+
     note for DownloadLogRepository "SQLite con prepared statements\nRetención: 90 días\nLimpieza automática"
     note for CachedDownloadLogRepository "Cache TTL: 30s en reads\nNo cache en writes"
 ```
 
 ## Tabla de Eventos
 
-| Evento | Trigger | Mensaje Descriptivo | Metadata |
-|--------|---------|---------------------|----------|
-| `download:enqueued` | Usuario encola descarga | "Download enqueued: {url}" | `{url, provider}` |
-| `download:started` | Worker inicia proceso | "Starting download: {url}" | `{url}` |
-| `download:progress` | Actualización progreso (≥5% delta) | "Download progress: {progress}%" | `{progress}` |
-| `download:completed` | Descarga exitosa | "Download completed successfully" | `{filePath}` |
-| `download:failed` | Error en descarga | "Download failed: {error}" | `{error}` |
-| `download:cancelled` | Usuario cancela | "Download cancelled by user" | `{url}` |
-| `download:stalled` | Timeout detectado | "Download stalled after {minutes} minutes" | `{url, progress, inactiveMinutes}` |
-| `storage:low` | Espacio insuficiente | "Insufficient storage: {available}GB" | `{availableGB, requiredGB}` |
-| `metadata:fetching` | Extrayendo metadata | "Fetching metadata from {provider}" | `{provider, url}` |
-| `metadata:found` | Metadata obtenida | "Found {N} tracks in album \"{title}\"" | `{title, artist, trackCount, isPlaylist}` |
+| Evento               | Trigger                            | Mensaje Descriptivo                        | Metadata                                  |
+| -------------------- | ---------------------------------- | ------------------------------------------ | ----------------------------------------- |
+| `download:enqueued`  | Usuario encola descarga            | "Download enqueued: {url}"                 | `{url, provider}`                         |
+| `download:started`   | Worker inicia proceso              | "Starting download: {url}"                 | `{url}`                                   |
+| `download:progress`  | Actualización progreso (≥5% delta) | "Download progress: {progress}%"           | `{progress}`                              |
+| `download:completed` | Descarga exitosa                   | "Download completed successfully"          | `{filePath}`                              |
+| `download:failed`    | Error en descarga                  | "Download failed: {error}"                 | `{error}`                                 |
+| `download:cancelled` | Usuario cancela                    | "Download cancelled by user"               | `{url}`                                   |
+| `download:stalled`   | Timeout detectado                  | "Download stalled after {minutes} minutes" | `{url, progress, inactiveMinutes}`        |
+| `storage:low`        | Espacio insuficiente               | "Insufficient storage: {available}GB"      | `{availableGB, requiredGB}`               |
+| `metadata:fetching`  | Extrayendo metadata                | "Fetching metadata from {provider}"        | `{provider, url}`                         |
+| `metadata:found`     | Metadata obtenida                  | "Found {N} tracks in album \"{title}\""    | `{title, artist, trackCount, isPlaylist}` |
 
 ## Throttling de Progreso
 
@@ -93,43 +93,46 @@ El sistema implementa throttling del 5% para eventos de progreso:
 Recupera los logs de una descarga con paginación.
 
 **Query Parameters:**
+
 - `page` (opcional): Número de página (1-indexed, default: 1)
 - `limit` (opcional): Logs por página (max: 100, default: 50)
 
 **Response 200:**
+
 ```json
 {
-  "logs": [
-    {
-      "id": 150,
-      "downloadId": 42,
-      "eventType": "download:completed",
-      "message": "Download completed successfully",
-      "metadata": {"filePath": "/tmp/downloads/song.opus"},
-      "timestamp": "2024-01-15T11:45:30Z"
-    },
-    {
-      "id": 149,
-      "downloadId": 42,
-      "eventType": "download:progress",
-      "message": "Download progress: 95%",
-      "metadata": {"progress": 95},
-      "timestamp": "2024-01-15T11:45:20Z"
-    }
-  ],
-  "pagination": {
-    "page": 1,
-    "limit": 50,
-    "total": 85,
-    "totalPages": 2
-  }
+	"logs": [
+		{
+			"id": 150,
+			"downloadId": 42,
+			"eventType": "download:completed",
+			"message": "Download completed successfully",
+			"metadata": { "filePath": "/tmp/downloads/song.opus" },
+			"timestamp": "2024-01-15T11:45:30Z"
+		},
+		{
+			"id": 149,
+			"downloadId": 42,
+			"eventType": "download:progress",
+			"message": "Download progress: 95%",
+			"metadata": { "progress": 95 },
+			"timestamp": "2024-01-15T11:45:20Z"
+		}
+	],
+	"pagination": {
+		"page": 1,
+		"limit": 50,
+		"total": 85,
+		"totalPages": 2
+	}
 }
 ```
 
 **Response 404:**
+
 ```json
 {
-  "error": "Download 42 not found"
+	"error": "Download 42 not found"
 }
 ```
 
@@ -176,18 +179,18 @@ Cada use case que antes emitía eventos SSE ahora crea logs persistentes:
 
 ```typescript
 // Antes (SSE)
-this.eventEmitter.emitWithId("download:started", {
-  downloadId: download.id,
-  url: download.url,
-  status: "in_progress",
+this.eventEmitter.emitWithId('download:started', {
+	downloadId: download.id,
+	url: download.url,
+	status: 'in_progress'
 });
 
 // Ahora (Logs)
 await this.downloadLogRepo.create({
-  downloadId: download.id,
-  eventType: "download:started",
-  message: `Starting download: ${download.url}`,
-  metadata: { url: download.url },
+	downloadId: download.id,
+	eventType: 'download:started',
+	message: `Starting download: ${download.url}`,
+	metadata: { url: download.url }
 });
 ```
 
