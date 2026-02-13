@@ -292,7 +292,12 @@ export class ProcessDownload {
 	 * // Metadata may have null fields (artist, album_artist)
 	 * ```
 	 */
-	private async extractAndLinkMetadata(downloadId: number, url: string): Promise<void> {
+	private async extractAndLinkMetadata(
+		downloadId: number,
+		url: string,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		filePath: string
+	): Promise<void> {
 		try {
 			// Determine provider from URL
 			const provider = url.includes('bandcamp.com') ? 'bandcamp' : 'youtube';
