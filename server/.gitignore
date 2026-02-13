@@ -12,3 +12,6 @@ data/*.db-wal
 # downloads
 data/temp/
 data/downloads/
+
+#coverage
+coverage/
