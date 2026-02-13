@@ -1,5 +1,5 @@
 import prettier from 'eslint-config-prettier';
-import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { includeIgnoreFile } from '@eslint/compat';
 import js from '@eslint/js';
 import svelte from 'eslint-plugin-svelte';
@@ -8,7 +8,7 @@ import globals from 'globals';
 import ts from 'typescript-eslint';
 import svelteConfig from './svelte.config.js';
 
-const gitignorePath = path.resolve(import.meta.dirname, '.gitignore');
+const gitignorePath = fileURLToPath(new URL('./.gitignore', import.meta.url));
 
 export default defineConfig(
 	includeIgnoreFile(gitignorePath),
@@ -18,7 +18,9 @@ export default defineConfig(
 	prettier,
 	...svelte.configs.prettier,
 	{
-		languageOptions: { globals: { ...globals.browser, ...globals.node } },
+		languageOptions: {
+			globals: { ...globals.browser, ...globals.node }
+		},
 		rules: {
 			// typescript-eslint strongly recommend that you do not use the no-undef lint rule on TypeScript projects.
 			// see: https://typescript-eslint.io/troubleshooting/faqs/eslint/#i-get-errors-from-the-no-undef-rule-about-global-variables-not-being-defined-even-though-there-are-no-typescript-errors
@@ -34,6 +36,13 @@ export default defineConfig(
 				parser: ts.parser,
 				svelteConfig
 			}
+		}
+	},
+	{
+		// Disable navigation-without-resolve for shadcn-ui components
+		files: ['src/lib/components/ui/**/*.svelte'],
+		rules: {
+			'svelte/no-navigation-without-resolve': 'off'
 		}
 	}
 );
