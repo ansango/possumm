@@ -11,7 +11,7 @@
   let url = $state('');
   let command = $state('--version');
   let skipDownload = $state(true);
-
+  let isCopying = $state(false);
   const executeMutation = useExecuteYtDlpCommand();
 
   function executeCommand() {
@@ -51,6 +51,32 @@
     return typeof executeMutation.data.stdout === 'string'
       ? executeMutation.data.stdout
       : JSON.stringify(executeMutation.data.stdout, null, 2);
+  }
+
+  function getFullCommand(): string {
+    let fullCommand = command.trim();
+
+    if (skipDownload && !fullCommand.includes('--skip-download')) {
+      fullCommand = `--skip-download ${fullCommand}`;
+    }
+
+    if (url.trim()) {
+      fullCommand = `${fullCommand} "${url.trim()}"`;
+    }
+
+    return `yt-dlp --js-runtime bun ${fullCommand}`;
+  }
+
+  async function copyCommand() {
+    isCopying = true;
+    try {
+      await navigator.clipboard.writeText(getFullCommand());
+
+    } catch (err) {
+      console.error('Failed to copy:', err);
+    } finally {
+      isCopying = false;
+    }
   }
 </script>
 
@@ -97,6 +123,28 @@
       </div>
       <p class="text-sm text-muted-foreground">Press Cmd+Enter (Mac) or Ctrl+Enter to execute</p>
     </div>
+
+    {#if command.trim()}
+      <div class="space-y-2">
+        <Label>Full command to execute</Label>
+        <div class="relative">
+          <code
+            class="block overflow-x-auto rounded-md border bg-muted px-3 py-2 font-mono text-sm"
+          >
+            {getFullCommand()}
+          </code>
+          <Button
+            variant="ghost"
+            size="sm"
+            onclick={copyCommand}
+            class="absolute top-1/2 right-2 -translate-y-1/2"
+            disabled={isCopying}
+          >
+            {isCopying ? 'Copying...' : 'Copy'}
+          </Button>
+        </div>
+      </div>
+    {/if}
 
     {#if executeMutation.isError}
       <div class="rounded-lg border border-destructive bg-destructive/10 p-4">
