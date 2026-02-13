@@ -1,8 +1,7 @@
 <script lang="ts">
 	import * as Item from '$lib/components/ui/item';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Progress } from '$lib/components/ui/progress';
-	import * as Alert from '$lib/components/ui/alert';
+	import { Button } from '$lib/components/ui/button';
 	import {
 		Clock,
 		Download as DownloadIcon,
@@ -10,11 +9,9 @@
 		XCircle,
 		Ban,
 		Loader2,
-		FileDown,
-		Calendar,
-		PlayCircle,
-		StopCircle,
-		AlertCircle
+		FolderOpen,
+		RotateCw,
+		Music
 	} from 'lucide-svelte';
 	import type { Download } from '$lib/types/download';
 
@@ -35,99 +32,106 @@
 			case 'stalled':
 				return Loader2;
 			default:
-				return DownloadIcon;
+				return Clock;
 		}
 	}
 
-	function getStatusVariant(status: Download['status']) {
+	function getStatusColor(status: Download['status']) {
 		switch (status) {
 			case 'pending':
-				return 'secondary';
+				return 'text-yellow-500';
 			case 'downloading':
-				return 'default';
+				return 'text-blue-500';
 			case 'completed':
-				return 'default';
+				return 'text-green-500';
 			case 'failed':
-				return 'destructive';
+				return 'text-destructive';
 			case 'cancelled':
-				return 'outline';
+				return 'text-muted-foreground';
 			case 'stalled':
-				return 'secondary';
+				return 'text-orange-500';
 			default:
-				return 'outline';
+				return 'text-muted-foreground';
+		}
+	}
+
+	function extractTitle(url: string): string {
+		try {
+			const urlObj = new URL(url);
+			const pathParts = urlObj.pathname.split('/').filter(Boolean);
+			return pathParts[pathParts.length - 1] || url;
+		} catch {
+			return url;
+		}
+	}
+
+	function extractArtist(url: string): string {
+		try {
+			const urlObj = new URL(url);
+			if (urlObj.hostname.includes('bandcamp')) {
+				return urlObj.hostname.split('.')[0];
+			}
+			return urlObj.hostname;
+		} catch {
+			return 'Unknown';
 		}
 	}
 
 	const StatusIcon = $derived(getStatusIcon(download.status));
-	const statusVariant = $derived(getStatusVariant(download.status));
+	const statusColor = $derived(getStatusColor(download.status));
+	const title = $derived(extractTitle(download.url));
+	const artist = $derived(extractArtist(download.url));
 	const showProgress = $derived(download.status === 'downloading' || download.status === 'pending');
 </script>
 
-<Item.Root variant="outline" class="transition-all hover:shadow-md">
+<Item.Root variant="outline" class="transition-all hover:bg-accent/50">
 	{#snippet child({ props })}
-		<button type="button" {onclick} {...props} class="w-full">
+		<button type="button" {onclick} {...props} class="flex w-full items-center gap-4">
 			<Item.Media>
-				<div class="flex size-10 items-center justify-center rounded-lg bg-muted">
-					<StatusIcon class="size-5 text-muted-foreground" />
+				<div
+					class="flex size-16 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-primary/20 to-primary/5"
+				>
+					<Music class="size-8 text-primary" />
 				</div>
 			</Item.Media>
 
-			<Item.Content>
-				<div class="flex items-center gap-2">
-					<Item.Title class="text-sm font-semibold">#{download.id}</Item.Title>
-					<Badge variant={statusVariant} class="capitalize">
-						{download.status}
-					</Badge>
-				</div>
-
-				<Item.Description class="line-clamp-1 text-xs">
-					{download.url}
+			<Item.Content class="min-w-0 flex-1">
+				<Item.Title class="truncate text-base font-semibold">{title}</Item.Title>
+				<Item.Description class="truncate text-sm text-muted-foreground">
+					{artist}
 				</Item.Description>
+			</Item.Content>
 
+			<Item.Actions class="flex shrink-0 items-center gap-3">
 				{#if showProgress}
-					<div class="mt-2 flex items-center gap-2">
-						<Progress value={download.progress} max={100} class="flex-1" />
-						<span class="text-xs font-medium text-muted-foreground">{download.progress}%</span>
+					<div class="flex min-w-24 flex-col items-end gap-1">
+						<span class="text-sm font-medium text-foreground">{download.progress}%</span>
+						<Progress value={download.progress} max={100} class="h-1 w-24" />
 					</div>
+				{:else if download.status === 'completed'}
+					<span class="text-sm font-semibold text-green-500">100%</span>
+				{:else if download.status === 'failed'}
+					<span class="text-sm font-semibold text-destructive">Failed</span>
 				{/if}
 
-				{#if download.errorMessage}
-					<Alert.Root variant="destructive" class="mt-2">
-						<AlertCircle class="size-4" />
-						<Alert.Description class="text-xs">
-							{download.errorMessage}
-						</Alert.Description>
-					</Alert.Root>
-				{/if}
-
-				{#if download.filePath}
-					<div class="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-						<FileDown class="size-3" />
-						<span class="truncate font-mono">{download.filePath}</span>
-					</div>
-				{/if}
-
-				<div class="mt-2 flex flex-wrap gap-3 text-xs text-muted-foreground">
-					{#if download.createdAt}
-						<div class="flex items-center gap-1">
-							<Calendar class="size-3" />
-							<span>{new Date(download.createdAt).toLocaleString()}</span>
-						</div>
-					{/if}
-					{#if download.startedAt}
-						<div class="flex items-center gap-1">
-							<PlayCircle class="size-3" />
-							<span>{new Date(download.startedAt).toLocaleString()}</span>
-						</div>
-					{/if}
-					{#if download.finishedAt}
-						<div class="flex items-center gap-1">
-							<StopCircle class="size-3" />
-							<span>{new Date(download.finishedAt).toLocaleString()}</span>
-						</div>
+				<div class="flex items-center gap-1">
+					{#if download.status === 'completed'}
+						<Button variant="ghost" size="icon" class="size-8">
+							<FolderOpen class="size-4" />
+						</Button>
+					{:else if download.status === 'failed'}
+						<Button variant="ghost" size="icon" class="size-8">
+							<RotateCw class="size-4" />
+						</Button>
+					{:else if download.status === 'downloading'}
+						<Button variant="ghost" size="icon" class="size-8">
+							<XCircle class="size-4" />
+						</Button>
+					{:else}
+						<StatusIcon class={`size-5 ${statusColor}`} />
 					{/if}
 				</div>
-			</Item.Content>
+			</Item.Actions>
 		</button>
 	{/snippet}
 </Item.Root>

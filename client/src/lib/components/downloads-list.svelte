@@ -9,7 +9,7 @@
 
 	let {
 		status,
-		pageSize = 5,
+		pageSize = 8,
 		onclick
 	}: {
 		status?: DownloadStatus;
