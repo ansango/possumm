@@ -5,6 +5,7 @@
 	import * as Alert from '$lib/components/ui/alert';
 	import { Loader2 } from 'lucide-svelte';
 	import DownloadItem from './download-item.svelte';
+	import Separator from './ui/separator/separator.svelte';
 
 	let {
 		status,
@@ -112,6 +113,7 @@
 				<div class="space-y-2 p-4">
 					{#each allDownloads as download (download.id)}
 						<DownloadItem {download} onclick={() => onclick?.(download.id)} />
+						<Separator class="my-2" />
 					{/each}
 
 					{#if downloadsQuery.isFetchingNextPage}
