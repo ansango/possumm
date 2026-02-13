@@ -6,11 +6,16 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Icon } from '$lib/components/ui/icons';
   import { useExecuteYtDlpCommand } from '$lib/queries';
 
-  let url = $state('');
-  let command = $state('--version');
+  let url = $state(
+    'https://music.youtube.com/playlist?list=OLAK5uy_kdLOnnGvE3A99ne7nhjnmiytoVAKroUys'
+  );
+  let command = $state('');
   let skipDownload = $state(true);
+  let flatPlaylist = $state(false);
+
   let isCopying = $state(false);
   const executeMutation = useExecuteYtDlpCommand();
 
@@ -24,13 +29,21 @@
       fullCommand = `--skip-download ${fullCommand}`;
     }
 
+    // Add --flat-playlist flag if checkbox is checked and not already present
+    if (flatPlaylist && !fullCommand.includes('--flat-playlist')) {
+      fullCommand = `--flat-playlist ${fullCommand}`;
+    }
+
     // Add URL if provided
     if (url.trim()) {
       fullCommand = `${fullCommand} "${url.trim()}"`;
     }
 
+    // Replace double quotes with single quotes for the server
+    const serverCommand = fullCommand.replace(/"/g, "'");
+
     executeMutation.mutate({
-      command: fullCommand
+      command: serverCommand
     });
   }
 
@@ -61,21 +74,25 @@
     }
 
     if (url.trim()) {
-      fullCommand = `${fullCommand} "${url.trim()}"`;
+      fullCommand = `${fullCommand} ${url.trim()}`;
     }
 
-    return `yt-dlp --js-runtime bun ${fullCommand}`;
+    if (flatPlaylist && !fullCommand.includes('--flat-playlist')) {
+      fullCommand = `--flat-playlist ${fullCommand}`;
+    }
+
+    return `yt-dlp ${fullCommand}`;
   }
 
   async function copyCommand() {
-    isCopying = true;
     try {
       await navigator.clipboard.writeText(getFullCommand());
-
+      isCopying = true;
+      setTimeout(() => {
+        isCopying = false;
+      }, 2000);
     } catch (err) {
       console.error('Failed to copy:', err);
-    } finally {
-      isCopying = false;
     }
   }
 </script>
@@ -100,6 +117,20 @@
         class="font-mono"
       />
     </div>
+    <div class="flex items-center gap-2">
+      <Checkbox id="skip-download" bind:checked={skipDownload} />
+      <Label for="skip-download" class="cursor-pointer text-sm font-normal">
+        Add <pre class="rounded bg-muted px-1 py-0.5">--skip-download</pre>
+        flag (useful for extracting metadata without downloading)
+      </Label>
+    </div>
+    <div class="flex items-center gap-2">
+      <Checkbox id="flat-playlist" bind:checked={flatPlaylist} />
+      <Label for="flat-playlist" class="cursor-pointer text-sm font-normal">
+        Add <pre class="rounded bg-muted px-1 py-0.5">--flat-playlist</pre>
+        flag (useful for extracting metadata without downloading)
+      </Label>
+    </div>
 
     <div class="space-y-2">
       <Label for="command">Command (without "yt-dlp" prefix)</Label>
@@ -115,18 +146,13 @@
           {executeMutation.isPending ? 'Executing...' : 'Execute'}
         </Button>
       </div>
-      <div class="flex items-center gap-2">
-        <Checkbox id="skip-download" bind:checked={skipDownload} />
-        <Label for="skip-download" class="cursor-pointer text-sm font-normal">
-          Add --skip-download flag (useful for extracting metadata without downloading)
-        </Label>
-      </div>
+
       <p class="text-sm text-muted-foreground">Press Cmd+Enter (Mac) or Ctrl+Enter to execute</p>
     </div>
 
     {#if command.trim()}
       <div class="space-y-2">
-        <Label>Full command to execute</Label>
+        <Label>Full command to execute in terminal</Label>
         <div class="relative">
           <code
             class="block overflow-x-auto rounded-md border bg-muted px-3 py-2 font-mono text-sm"
@@ -135,12 +161,16 @@
           </code>
           <Button
             variant="ghost"
-            size="sm"
+            size="icon"
             onclick={copyCommand}
-            class="absolute top-1/2 right-2 -translate-y-1/2"
+            class="absolute top-1/2 right-2 h-8 w-8 -translate-y-1/2"
             disabled={isCopying}
           >
-            {isCopying ? 'Copying...' : 'Copy'}
+            {#if isCopying}
+              <Icon.Check class="h-4 w-4" />
+            {:else}
+              <Icon.Copy class="h-4 w-4" />
+            {/if}
           </Button>
         </div>
       </div>

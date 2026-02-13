@@ -1,8 +1,10 @@
 import {
   AlertCircle,
   Ban,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   FolderOpen,
   Home,
@@ -22,8 +24,10 @@ import type { ComponentType } from 'svelte';
 export const Icon = {
   AlertCircle,
   Ban,
+  Check,
   CheckCircle2,
   Clock,
+  Copy,
   Download,
   FolderOpen,
   Home,
