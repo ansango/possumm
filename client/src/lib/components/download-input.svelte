@@ -2,7 +2,7 @@
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
 	import { Input } from '$lib/components/ui/input';
 	import * as Alert from '$lib/components/ui/alert';
-	import { LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-svelte'
+	import { LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-svelte';
 
 	let url = $state('');
 	let isSubmitting = $state(false);
