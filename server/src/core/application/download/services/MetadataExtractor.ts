@@ -104,19 +104,43 @@ export class MetadataExtractor {
     this.logger.info(`Extracting metadata from URL: ${url}, provider=${provider}`);
 
     try {
+      const cmd = [
+        'yt-dlp',
+        '--js-runtime',
+        'bun',
+        '--skip-download',
+        '--dump-json',
+        '--flat-playlist',
+        url
+      ];
+      this.logger.info(`Spawning yt-dlp process: ${cmd.join(' ')}`);
+
       const process = spawn({
-        cmd: ['yt-dlp', '--js-runtime', 'bun', '--skip-download', '--dump-json', url],
+        cmd,
         stdout: 'pipe',
         stderr: 'pipe'
       });
 
+      this.logger.info(`yt-dlp process spawned with PID: ${process.pid}`);
+
       // Capture both streams before checking exit code
+      this.logger.info('Reading stdout and stderr streams...');
       const [output, errorOutput] = await Promise.all([
         new Response(process.stdout).text(),
         new Response(process.stderr).text()
       ]);
 
+      this.logger.info(
+        `Streams captured - stdout length: ${output.length}, stderr length: ${errorOutput.length}`
+      );
+      if (errorOutput.length > 0) {
+        this.logger.warn(
+          `stderr output: ${errorOutput.substring(0, 500)}${errorOutput.length > 500 ? '...' : ''}`
+        );
+      }
+
       const exitCode = await process.exited;
+      this.logger.info(`Process exited with code: ${exitCode}`);
 
       if (exitCode !== 0) {
         this.logger.error(
@@ -170,7 +194,20 @@ export class MetadataExtractor {
         `Metadata extracted successfully: title=${metadata.title}, artist=${metadata.artist || metadata.uploader}, type=${metadata._type || 'single'}`
       );
 
-      return metadata;
+      return {
+        title: metadata.title || null,
+        artist: metadata.artist || metadata.uploader || null,
+        album: metadata.album || null,
+        album_artist: metadata.album_artist || null,
+        release_year: metadata.release_year || null,
+        upload_date: metadata.upload_date || null,
+        thumbnail: metadata.thumbnail || null,
+        duration: metadata.duration || null,
+        id: metadata.id || null,
+        uploader: metadata.uploader || null,
+        _type: metadata._type,
+        entries: metadata.entries
+      };
     } catch (error) {
       this.logger.error(`Error extracting metadata from ${url}: ${error}`);
       throw error;

@@ -30,6 +30,7 @@ import { RetryDownload } from '@/core/application/download/use-cases/RetryDownlo
 import { CleanupOrphanedFiles } from '@/core/application/download/use-cases/CleanupOrphanedFiles';
 import { CleanupOldLogs } from '@/core/application/download/use-cases/CleanupOldLogs';
 import { MarkStalledDownloads } from '@/core/application/download/use-cases/MarkStalledDownloads';
+import { ExecuteYtDlpCommand } from '@/core/application/sandbox/use-cases/ExecuteYtDlpCommand';
 
 // Infrastructure
 import { DownloadWorker } from '@/core/application/download/worker/DownloadWorker';
@@ -70,6 +71,7 @@ export interface AppDependencies {
     cleanupOrphanedFiles: CleanupOrphanedFiles;
     cleanupOldLogs: CleanupOldLogs;
     markStalledDownloads: MarkStalledDownloads;
+    executeYtDlpCommand: ExecuteYtDlpCommand;
   };
   worker: DownloadWorker;
 }
@@ -153,6 +155,9 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
     config.downloadTimeoutMinutes
   );
 
+  // Create sandbox use cases
+  const executeYtDlpCommand = new ExecuteYtDlpCommand(logger);
+
   // Create worker
   const worker = new DownloadWorker(
     downloadRepo,
@@ -192,7 +197,8 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
       retryDownload,
       cleanupOrphanedFiles,
       cleanupOldLogs,
-      markStalledDownloads
+      markStalledDownloads,
+      executeYtDlpCommand
     },
     worker
   };
