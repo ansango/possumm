@@ -11,11 +11,13 @@
 
 	<DownloadInput />
 
+	<div class="flex w-full gap-4">
 	<DownloadsList onclick={(id) => (selectedDownloadId = id)} />
 
 	{#if selectedDownloadId}
 		<DownloadLogs downloadId={selectedDownloadId} />
 	{/if}
+	</div>
 </div>
 
 <style>

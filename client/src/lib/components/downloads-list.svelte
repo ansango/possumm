@@ -82,7 +82,7 @@
 	});
 </script>
 
-<div class="mx-auto max-w-4xl space-y-4 p-4">
+<div class="max-w-2xl space-y-4 p-4 w-full">
 	{#if downloadsQuery.isLoading}
 		<div class="flex items-center justify-center p-8">
 			<Loader2 class="size-8 animate-spin text-muted-foreground" />
