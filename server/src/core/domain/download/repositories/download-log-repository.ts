@@ -1,3 +1,4 @@
+
 import { DownloadLog, DownloadLogEventType } from '../entities/download-log';
 
 /**
@@ -7,6 +8,7 @@ export type CreateDownloadLogData = {
 	downloadId: number;
 	eventType: DownloadLogEventType;
 	message: string;
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	metadata?: Record<string, any> | null;
 };
 

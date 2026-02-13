@@ -25,6 +25,7 @@ export class DownloadLog {
 		public readonly downloadId: number,
 		public readonly eventType: DownloadLogEventType,
 		public readonly message: string,
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		public readonly metadata: Record<string, any> | null,
 		public readonly timestamp: Date
 	) {}
@@ -32,6 +33,7 @@ export class DownloadLog {
 	/**
 	 * Creates DownloadLog from database row.
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	static fromDatabase(row: any): DownloadLog {
 		return new DownloadLog(
 			row.id,

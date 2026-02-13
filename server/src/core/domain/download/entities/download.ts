@@ -96,6 +96,7 @@ export class DownloadItem {
 	 * const download = DownloadItem.fromDatabase(dbRow);
 	 * ```
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	static fromDatabase(row: any): DownloadItem {
 		return new DownloadItem(
 			row.id,

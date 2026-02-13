@@ -45,7 +45,7 @@ export class SQLiteDownloadLogRepository implements DownloadLogRepository {
       LIMIT ? OFFSET ?
     `);
 
-		const rows = stmt.all(downloadId, pageSize, offset) as any[];
+		const rows = stmt.all(downloadId, pageSize, offset);
 		return rows.map((row) => DownloadLog.fromDatabase(row));
 	}
 
@@ -55,7 +55,7 @@ export class SQLiteDownloadLogRepository implements DownloadLogRepository {
       WHERE download_id = ?
     `);
 
-		const result = stmt.get(downloadId) as any;
+		const result = stmt.get(downloadId) as { count: number };
 		return result.count;
 	}
 

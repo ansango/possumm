@@ -55,7 +55,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
 	 */
 	async findById(id: number): Promise<DownloadItem | null> {
 		const stmt = this.db.prepare('SELECT * FROM downloads WHERE id = ?');
-		const row = stmt.get(id) as any;
+		const row = stmt.get(id);
 		return row ? DownloadItem.fromDatabase(row) : null;
 	}
 
@@ -88,7 +88,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       ORDER BY created_at ASC
       LIMIT 1
     `);
-		const row = stmt.get() as any;
+		const row = stmt.get();
 		return row ? DownloadItem.fromDatabase(row) : null;
 	}
 
@@ -122,7 +122,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       WHERE normalized_url = ? AND status IN ('pending', 'in_progress')
       LIMIT 1
     `);
-		const row = stmt.get(normalizedUrl) as any;
+		const row = stmt.get(normalizedUrl);
 		return row ? DownloadItem.fromDatabase(row) : null;
 	}
 
@@ -163,7 +163,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `);
-		const rows = stmt.all(status, pageSize, offset) as any[];
+		const rows = stmt.all(status, pageSize, offset);
 		return rows.map((row) => DownloadItem.fromDatabase(row));
 	}
 
@@ -197,7 +197,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `);
-		const rows = stmt.all(pageSize, offset) as any[];
+		const rows = stmt.all(pageSize, offset);
 		return rows.map((row) => DownloadItem.fromDatabase(row));
 	}
 
@@ -229,7 +229,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       WHERE (status = 'completed' OR status = 'failed')
       AND finished_at < datetime('now', '-' || ? || ' days')
     `);
-		const rows = stmt.all(days) as any[];
+		const rows = stmt.all(days);
 		return rows.map((row) => DownloadItem.fromDatabase(row));
 	}
 
@@ -262,7 +262,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
       WHERE status = 'in_progress'
       AND started_at < datetime('now', '-' || ? || ' minutes')
     `);
-		const rows = stmt.all(timeoutMinutes) as any[];
+		const rows = stmt.all(timeoutMinutes);
 		return rows.map((row) => DownloadItem.fromDatabase(row));
 	}
 
@@ -419,7 +419,7 @@ export class SQLiteDownloadRepository implements DownloadRepository {
 		filePath?: string | null
 	): Promise<void> {
 		const updates: string[] = ['status = ?', 'progress = ?', 'error_message = ?'];
-		const values: any[] = [status, progress, errorMessage];
+		const values = [status, progress, errorMessage];
 
 		if (filePath !== undefined) {
 			updates.push('file_path = ?');

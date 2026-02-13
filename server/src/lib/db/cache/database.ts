@@ -140,7 +140,7 @@ export class CacheDatabase {
 					return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 				}
 			}
-		} catch (error) {
+		} catch {
 			// Ignore errors
 		}
 		return '0 B';

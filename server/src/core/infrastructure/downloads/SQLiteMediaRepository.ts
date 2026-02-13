@@ -66,7 +66,7 @@ export class SQLiteMediaRepository implements MediaRepository {
 	 */
 	async findById(id: number): Promise<MediaItem | null> {
 		const stmt = this.db.prepare('SELECT * FROM media WHERE id = ?');
-		const row = stmt.get(id) as any;
+		const row = stmt.get(id);
 		return row ? MediaItem.fromDatabase(row) : null;
 	}
 
@@ -94,7 +94,7 @@ export class SQLiteMediaRepository implements MediaRepository {
 		providerId: string
 	): Promise<MediaItem | null> {
 		const stmt = this.db.prepare('SELECT * FROM media WHERE provider = ? AND provider_id = ?');
-		const row = stmt.get(provider, providerId) as any;
+		const row = stmt.get(provider, providerId);
 		return row ? MediaItem.fromDatabase(row) : null;
 	}
 
@@ -109,7 +109,7 @@ export class SQLiteMediaRepository implements MediaRepository {
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
     `);
-		const rows = stmt.all(pageSize, offset) as any[];
+		const rows = stmt.all(pageSize, offset);
 		return rows.map((row) => MediaItem.fromDatabase(row));
 	}
 
@@ -278,7 +278,7 @@ export class SQLiteMediaRepository implements MediaRepository {
 		}
 
 		const updates: string[] = [];
-		const values: any[] = [];
+		const values = [];
 
 		if (fields.title !== undefined) {
 			updates.push('title = ?');
