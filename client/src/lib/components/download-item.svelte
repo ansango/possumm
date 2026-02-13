@@ -14,46 +14,34 @@
 		Music
 	} from 'lucide-svelte';
 	import type { Download } from '$lib/types/download';
+	import type { ComponentType } from 'svelte';
 
 	let { download, onclick }: { download: Download; onclick?: () => void } = $props();
 
-	function getStatusIcon(status: Download['status']) {
-		switch (status) {
-			case 'pending':
-				return Clock;
-			case 'downloading':
-				return DownloadIcon;
-			case 'completed':
-				return CheckCircle2;
-			case 'failed':
-				return XCircle;
-			case 'cancelled':
-				return Ban;
-			case 'stalled':
-				return Loader2;
-			default:
-				return Clock;
-		}
-	}
+	const STATUS_ICONS: Record<Download['status'], ComponentType> = {
+		pending: Clock,
+		downloading: DownloadIcon,
+		completed: CheckCircle2,
+		failed: XCircle,
+		cancelled: Ban,
+		stalled: Loader2
+	};
 
-	function getStatusColor(status: Download['status']) {
-		switch (status) {
-			case 'pending':
-				return 'text-yellow-500';
-			case 'downloading':
-				return 'text-blue-500';
-			case 'completed':
-				return 'text-green-500';
-			case 'failed':
-				return 'text-destructive';
-			case 'cancelled':
-				return 'text-muted-foreground';
-			case 'stalled':
-				return 'text-orange-500';
-			default:
-				return 'text-muted-foreground';
-		}
-	}
+	const STATUS_COLORS: Record<Download['status'], string> = {
+		pending: 'text-yellow-500',
+		downloading: 'text-blue-500',
+		completed: 'text-green-500',
+		failed: 'text-destructive',
+		cancelled: 'text-muted-foreground',
+		stalled: 'text-orange-500'
+	};
+
+	const ACTION_BUTTONS: Partial<Record<Download['status'], { icon: ComponentType; size: string }>> =
+		{
+			completed: { icon: FolderOpen, size: 'size-4' },
+			failed: { icon: RotateCw, size: 'size-4' },
+			downloading: { icon: XCircle, size: 'size-4' }
+		};
 
 	function extractTitle(url: string): string {
 		try {
@@ -77,11 +65,12 @@
 		}
 	}
 
-	const StatusIcon = $derived(getStatusIcon(download.status));
-	const statusColor = $derived(getStatusColor(download.status));
+	const StatusIcon = $derived(STATUS_ICONS[download.status]);
+	const statusColor = $derived(STATUS_COLORS[download.status]);
 	const title = $derived(extractTitle(download.url));
 	const artist = $derived(extractArtist(download.url));
 	const showProgress = $derived(download.status === 'downloading' || download.status === 'pending');
+	const actionButton = $derived(ACTION_BUTTONS[download.status]);
 </script>
 
 <Item.Root variant="outline" class="transition-all hover:bg-accent/50">
@@ -115,17 +104,10 @@
 				{/if}
 
 				<div class="flex items-center gap-1">
-					{#if download.status === 'completed'}
+					{#if actionButton}
+						{@const ActionIcon = actionButton.icon}
 						<Button variant="ghost" size="icon" class="size-8">
-							<FolderOpen class="size-4" />
-						</Button>
-					{:else if download.status === 'failed'}
-						<Button variant="ghost" size="icon" class="size-8">
-							<RotateCw class="size-4" />
-						</Button>
-					{:else if download.status === 'downloading'}
-						<Button variant="ghost" size="icon" class="size-8">
-							<XCircle class="size-4" />
+							<ActionIcon class={actionButton.size} />
 						</Button>
 					{:else}
 						<StatusIcon class={`size-5 ${statusColor}`} />
