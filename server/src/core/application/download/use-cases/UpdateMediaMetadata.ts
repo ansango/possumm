@@ -88,6 +88,7 @@ export class UpdateMediaMetadata {
 			throw new Error(`Media ${mediaId} not found`);
 		}
 
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
 		const validFields: Record<string, any> = {};
 
 		if (updates.title !== undefined) validFields.title = updates.title;

@@ -5,8 +5,8 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun run --hot src/index.ts",
-		"lint": "prettier --check . && eslint .",
 		"format": "prettier --write .",
+		"lint": "bun format && eslint .",
 		"test:unit": "vitest",
 		"test:coverage": "vitest run --coverage"
 	},

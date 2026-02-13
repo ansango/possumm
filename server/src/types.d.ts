@@ -8,4 +8,5 @@ declare module 'hono' {
 }
 
 declare type AppRouteHandler<R extends RouteConfig> = RouteHandler<R>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 declare type AppRouteHook = Hook<any, any, any, any>;

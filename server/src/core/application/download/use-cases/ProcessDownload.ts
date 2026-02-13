@@ -6,7 +6,6 @@ import { MetadataExtractor } from '../services/MetadataExtractor';
 import { DownloadLogRepository } from '@/core/domain/download/repositories/download-log-repository';
 import { MediaItem } from '@/core/domain/media/entities/media';
 import type { PinoLogger } from 'hono-pino';
-import { join } from 'path';
 
 /**
  * Use case for processing a pending download.
@@ -293,11 +292,7 @@ export class ProcessDownload {
 	 * // Metadata may have null fields (artist, album_artist)
 	 * ```
 	 */
-	private async extractAndLinkMetadata(
-		downloadId: number,
-		url: string,
-		filePath: string
-	): Promise<void> {
+	private async extractAndLinkMetadata(downloadId: number, url: string): Promise<void> {
 		try {
 			// Determine provider from URL
 			const provider = url.includes('bandcamp.com') ? 'bandcamp' : 'youtube';

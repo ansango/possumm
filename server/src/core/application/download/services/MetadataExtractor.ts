@@ -21,6 +21,7 @@ interface MetadataResult {
 	/** Type marker: 'playlist' for albums, undefined for tracks */
 	_type?: string;
 	/** Array of tracks for playlists/albums */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	entries?: any[];
 }
 

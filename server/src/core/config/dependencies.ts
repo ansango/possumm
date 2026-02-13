@@ -33,7 +33,6 @@ import { MarkStalledDownloads } from '@/core/application/download/use-cases/Mark
 
 // Infrastructure
 import { DownloadWorker } from '@/core/application/download/worker/DownloadWorker';
-import { cache } from '@/lib/db/cache';
 
 interface AppConfig {
 	downloadTempDir: string;

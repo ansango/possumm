@@ -142,9 +142,11 @@ export class MediaItem {
 	 * // tracks: [{ track: 1, title: 'Track 1', ... }, { track: 2, title: 'Track 2', ... }]
 	 * ```
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	static fromYtDlpMetadata(data: any, provider: Provider): MediaItem {
 		const tracks = data.entries
-			? data.entries.map((entry: any, index: number) => ({
+			? // eslint-disable-next-line @typescript-eslint/no-explicit-any
+				data.entries.map((entry: any, index: number) => ({
 					track: entry.playlist_index ?? index + 1,
 					title: entry.title ?? null,
 					duration: entry.duration ?? null
@@ -199,6 +201,7 @@ export class MediaItem {
 	 * const media = MediaItem.fromDatabase(dbRow);
 	 * ```
 	 */
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	static fromDatabase(row: any): MediaItem {
 		return new MediaItem(
 			row.id,
