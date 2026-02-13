@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { useEnqueueDownload } from '$lib/queries';
 	import { Input } from '$lib/components/ui/input';
 	import * as Alert from '$lib/components/ui/alert';
 	import { LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-svelte';
@@ -7,45 +7,18 @@
 	let url = $state('');
 	let isSubmitting = $state(false);
 
-	const queryClient = useQueryClient();
-
-	const enqueueDownloadMutation = createMutation(() => ({
-		mutationFn: async (downloadUrl: string) => {
-			const response = await fetch('http://localhost:3000/api/downloads', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify({ url: downloadUrl })
-			});
-
-			if (!response.ok) {
-				const error = await response.json();
-				throw new Error(error.message || `Failed to enqueue download: ${response.statusText}`);
-			}
-
-			return response.json();
-		},
-		onMutate: () => {
-			isSubmitting = true;
-			queryClient.cancelQueries({ queryKey: ['downloads'] });
-		},
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ['downloads'] });
-			url = '';
-		},
-		onSettled: () => {
-			isSubmitting = false;
-		}
-	}));
+	const enqueueDownloadMutation = useEnqueueDownload();
 
 	async function handleSubmit(event: KeyboardEvent) {
 		if (event.key === 'Enter' && url.trim() && !isSubmitting) {
 			isSubmitting = true;
 			try {
 				await enqueueDownloadMutation.mutateAsync(url.trim());
+				url = '';
 			} catch (error) {
 				console.error('Error enqueuing download:', error);
+			} finally {
+				isSubmitting = false;
 			}
 		}
 	}

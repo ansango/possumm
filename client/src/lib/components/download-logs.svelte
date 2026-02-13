@@ -1,7 +1,5 @@
 <script lang="ts">
-	import { createQuery } from '@tanstack/svelte-query';
-	import type { DownloadLogsResponse } from '$lib/types/download-log';
-	import type { Download } from '$lib/types/download';
+	import { useDownload, useDownloadLogs } from '$lib/queries';
 
 	let {
 		downloadId,
@@ -11,62 +9,15 @@
 
 	let logContainer = $state<HTMLDivElement>();
 
-	// Query to get download status
-	const downloadQuery = createQuery(() => ({
-		queryKey: ['download', downloadId],
-		queryFn: async (): Promise<{ download: Download }> => {
-			const response = await fetch(`http://localhost:3000/api/downloads/${downloadId}`);
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch download: ${response.statusText}`);
-			}
-
-			return response.json();
-		},
-		refetchInterval: (query) => {
-			const download = query.state.data?.download;
-			// Only refetch if status is not completed, failed, or cancelled
-			if (
-				download &&
-				download.status !== 'completed' &&
-				download.status !== 'failed' &&
-				download.status !== 'cancelled'
-			) {
-				return 5000;
-			}
-			return false;
-		},
-		refetchIntervalInBackground: true
-	}));
-
-	const logsQuery = createQuery(() => ({
-		queryKey: ['download-logs', downloadId, { page, limit }],
-		queryFn: async (): Promise<DownloadLogsResponse> => {
-			const response = await fetch(
-				`http://localhost:3000/api/downloads/${downloadId}/logs?page=${page}&limit=${limit}`
-			);
-
-			if (!response.ok) {
-				throw new Error(`Failed to fetch logs: ${response.statusText}`);
-			}
-
-			return response.json();
-		},
-		refetchInterval: () => {
-			const download = downloadQuery.data?.download;
-			// Only refetch if status is not completed, failed, or cancelled
-			if (
-				download &&
-				download.status !== 'completed' &&
-				download.status !== 'failed' &&
-				download.status !== 'cancelled'
-			) {
-				return 5000;
-			}
-			return false;
-		},
-		refetchIntervalInBackground: true
-	}));
+	const downloadQuery = $derived(useDownload(downloadId));
+	const logsQuery = $derived(
+		useDownloadLogs({
+			downloadId,
+			page,
+			limit,
+			download: downloadQuery.data?.download
+		})
+	);
 
 	$effect(() => {
 		const data = logsQuery.data;
