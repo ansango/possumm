@@ -15,7 +15,7 @@
 <QueryProvider client={data.queryClient}>
   <Sidebar.Provider>
     <AppSidebar />
-    <main class="w-full">
+    <main class="w-full p-2 md:p-4">
       <Sidebar.Trigger />
       {@render children()}
     </main>

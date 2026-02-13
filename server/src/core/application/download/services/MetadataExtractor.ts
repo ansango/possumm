@@ -111,7 +111,6 @@ export class MetadataExtractor {
 					'bun',
 					'--skip-download',
 					'--dump-json',
-					'--flat-playlist',
 					url
 				],
 				stdout: 'pipe',

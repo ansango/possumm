@@ -82,16 +82,17 @@
   });
 </script>
 
-<div class="w-full max-w-2xl space-y-4 p-4">
+<div class="my-4 space-y-4">
   {#if downloadsQuery.isLoading}
     <div class="flex items-center justify-center p-8">
       <Icon.Loader2 class="size-8 animate-spin text-muted-foreground" />
     </div>
   {:else if downloadsQuery.isError}
-    <Alert.Root variant="destructive">
+    <Alert.Root variant="destructive" >
+      <Icon.AlertCircle />
       <Alert.Title>Error loading downloads</Alert.Title>
       <Alert.Description>
-        {downloadsQuery.error?.message || 'Failed to load downloads'}
+        {downloadsQuery.error?.message ?? 'Failed to load downloads'}
       </Alert.Description>
     </Alert.Root>
   {:else if downloadsQuery.data}

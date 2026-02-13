@@ -7,16 +7,6 @@
       title: 'Home',
       url: '/',
       icon: Icon.Home
-    },
-    {
-      title: 'Downloads',
-      url: '/downloads',
-      icon: Icon.Download
-    },
-    {
-      title: 'Settings',
-      url: '/settings',
-      icon: Icon.Settings
     }
   ];
 </script>
