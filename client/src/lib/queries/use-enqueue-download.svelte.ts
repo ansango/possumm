@@ -9,7 +9,7 @@ export function useEnqueueDownload() {
 
 	return createMutation(() => ({
 		mutationFn: async (downloadUrl: string) => {
-			const response = await fetch('http://localhost:3000/api/downloads', {
+			const response = await fetch('/api/downloads', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -18,7 +18,7 @@ export function useEnqueueDownload() {
 			});
 
 			if (!response.ok) {
-				const error = await response.json();
+				const error = await response.json().catch(() => ({}));
 				throw new Error(error.message || `Failed to enqueue download: ${response.statusText}`);
 			}
 

@@ -23,9 +23,7 @@ export function useDownloadLogs({
 	return createQuery(() => ({
 		queryKey: ['download-logs', downloadId, { page, limit }],
 		queryFn: async (): Promise<DownloadLogsResponse> => {
-			const response = await fetch(
-				`http://localhost:3000/api/downloads/${downloadId}/logs?page=${page}&limit=${limit}`
-			);
+			const response = await fetch(`/api/downloads/${downloadId}/logs?page=${page}&limit=${limit}`);
 
 			if (!response.ok) {
 				throw new Error(`Failed to fetch logs: ${response.statusText}`);

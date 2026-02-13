@@ -10,7 +10,7 @@ export function useDownload(downloadId: number) {
 	return createQuery(() => ({
 		queryKey: ['download', downloadId],
 		queryFn: async (): Promise<{ download: Download }> => {
-			const response = await fetch(`http://localhost:3000/api/downloads/${downloadId}`);
+			const response = await fetch(`/api/downloads/${downloadId}`);
 
 			if (!response.ok) {
 				throw new Error(`Failed to fetch download: ${response.statusText}`);
