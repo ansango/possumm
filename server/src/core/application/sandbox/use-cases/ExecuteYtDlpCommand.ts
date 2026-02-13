@@ -4,12 +4,14 @@ import type { PinoLogger } from 'hono-pino';
 /**
  * Result from executing a yt-dlp command.
  *
- * Contains both stdout and stderr output, along with the exit code.
+ * Contains both stdout (as object if JSON, or string), stderr output, and exit code.
  */
 interface ExecuteYtDlpCommandResult {
-  stdout: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  stdout: any;
   stderr: string;
   exitCode: number;
+  isJsonOutput: boolean;
 }
 
 /**
@@ -44,34 +46,54 @@ export class ExecuteYtDlpCommand {
    * 2. Prepends required yt-dlp runtime arguments
    * 3. Spawns yt-dlp process with Bun
    * 4. Captures stdout and stderr
-   * 5. Returns output and exit code
+   * 5. Attempts to parse stdout as JSON (single object or array of objects)
+   * 6. Returns parsed output (or raw string if not JSON), stderr, exit code, and JSON flag
    *
    * The command string is parsed respecting quoted strings.
    * For example: '--skip-download --dump-json "https://example.com"'
    * becomes: ['--skip-download', '--dump-json', 'https://example.com']
    *
+   * JSON Parsing:
+   * - Single JSON object: parsed as object
+   * - Multiple JSON lines (playlists): parsed as array of objects
+   * - Non-JSON output: returned as string
+   *
    * @param commandString - User command string (e.g., "--help", "--version")
-   * @returns Result with stdout, stderr, and exit code
+   * @returns Result with parsed stdout (object/array/string), stderr, exit code, and isJsonOutput flag
    * @throws Error if command parsing fails
    *
    * @example
    * ```typescript
    * const useCase = new ExecuteYtDlpCommand(logger);
    *
-   * // Get version
+   * // Get version (string output)
    * const result1 = await useCase.execute('--version');
-   * // Executes: ['yt-dlp', '--js-runtime', 'bun', '--version']
-   * // Returns: { stdout: '2024.01.01\n', stderr: '', exitCode: 0 }
+   * // Returns: { stdout: '2024.01.01\n', stderr: '', exitCode: 0, isJsonOutput: false }
    *
-   * // Get help
+   * // Get help (string output)
    * const result2 = await useCase.execute('--help');
-   * // Executes: ['yt-dlp', '--js-runtime', 'bun', '--help']
-   * // Returns: { stdout: 'Usage: yt-dlp [OPTIONS] URL...', stderr: '', exitCode: 0 }
+   * // Returns: { stdout: 'Usage: yt-dlp [OPTIONS] URL...', stderr: '', exitCode: 0, isJsonOutput: false }
    *
-   * // Extract metadata (with quotes)
+   * // Extract metadata (JSON output)
    * const result3 = await useCase.execute('--skip-download --dump-json "https://music.youtube.com/watch?v=abc123"');
-   * // Executes: ['yt-dlp', '--js-runtime', 'bun', '--skip-download', '--dump-json', 'https://music.youtube.com/watch?v=abc123']
-   * // Returns: { stdout: '{"title":"Song",...}', stderr: '', exitCode: 0 }
+   * // Returns: {
+   * //   stdout: { title: 'Song', artist: 'Artist', ... },
+   * //   stderr: '',
+   * //   exitCode: 0,
+   * //   isJsonOutput: true
+   * // }
+   *
+   * // Extract playlist metadata (multiple JSON lines)
+   * const result4 = await useCase.execute('--flat-playlist --dump-json "https://music.youtube.com/playlist?list=abc"');
+   * // Returns: {
+   * //   stdout: [
+   * //     { title: 'Track 1', id: 'xyz1', ... },
+   * //     { title: 'Track 2', id: 'xyz2', ... }
+   * //   ],
+   * //   stderr: '',
+   * //   exitCode: 0,
+   * //   isJsonOutput: true
+   * // }
    * ```
    */
   async execute(commandString: string): Promise<ExecuteYtDlpCommandResult> {
@@ -107,10 +129,46 @@ export class ExecuteYtDlpCommand {
         `Process finished: exitCode=${exitCode}, stdout length=${stdout.length}, stderr length=${stderr.length}`
       );
 
+      // Try to parse stdout as JSON
+      let parsedStdout: unknown = stdout;
+      let isJsonOutput = false;
+
+      try {
+        // Attempt to parse as JSON
+        parsedStdout = JSON.parse(stdout.trim());
+        isJsonOutput = true;
+        this.logger.info('Successfully parsed stdout as JSON');
+      } catch {
+        // If not valid JSON, check if it's multiple JSON lines (like yt-dlp playlist output)
+        const lines = stdout
+          .trim()
+          .split('\n')
+          .filter((line) => line.length > 0);
+
+        if (lines.length > 1) {
+          try {
+            // Try to parse each line as JSON
+            const parsedLines = lines.map((line) => JSON.parse(line));
+            parsedStdout = parsedLines;
+            isJsonOutput = true;
+            this.logger.info(
+              `Successfully parsed stdout as array of ${parsedLines.length} JSON objects`
+            );
+          } catch {
+            // If parsing fails, keep as string
+            this.logger.info('Stdout is not JSON, keeping as string');
+          }
+        } else {
+          // Single line that's not JSON, keep as string
+          this.logger.info('Stdout is not JSON, keeping as string');
+        }
+      }
+
       return {
-        stdout,
+        stdout: parsedStdout,
         stderr,
-        exitCode
+        exitCode,
+        isJsonOutput
       };
     } catch (error) {
       this.logger.error(`Error executing yt-dlp sandbox command: ${error}`);

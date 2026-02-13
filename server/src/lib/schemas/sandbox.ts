@@ -27,11 +27,17 @@ export const ExecuteYtDlpCommandSchema = z.object({
 
 /**
  * Schema for yt-dlp command execution response.
+ *
+ * The stdout field can be:
+ * - A parsed JSON object (when yt-dlp returns JSON)
+ * - An array of JSON objects (for playlists/multiple entries)
+ * - A raw string (for non-JSON output like --help, --version)
  */
 export const ExecuteYtDlpCommandResponseSchema = z.object({
-  stdout: z.string().openapi({
-    description: 'Standard output from yt-dlp command',
-    example: '2024.01.01\n'
+  stdout: z.union([z.any(), z.string()]).openapi({
+    description:
+      'Standard output from yt-dlp command. Automatically parsed as JSON object/array if output is JSON, otherwise returned as string.',
+    example: { title: 'Song Name', artist: 'Artist Name', duration: 240 }
   }),
   stderr: z.string().openapi({
     description: 'Standard error output from yt-dlp command',
@@ -40,5 +46,9 @@ export const ExecuteYtDlpCommandResponseSchema = z.object({
   exitCode: z.number().openapi({
     description: 'Process exit code (0 = success, non-zero = error)',
     example: 0
+  }),
+  isJsonOutput: z.boolean().openapi({
+    description: 'Indicates whether stdout was successfully parsed as JSON',
+    example: true
   })
 });
