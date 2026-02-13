@@ -1,5 +1,8 @@
 <script lang="ts">
 	import { createMutation, useQueryClient } from '@tanstack/svelte-query';
+	import { Input } from '$lib/components/ui/input';
+	import * as Alert from '$lib/components/ui/alert';
+	import { LoaderCircle, CheckCircle2, AlertCircle } from 'lucide-svelte'
 
 	let url = $state('');
 	let isSubmitting = $state(false);
@@ -23,16 +26,16 @@
 
 			return response.json();
 		},
-        onMutate:() => {
-            isSubmitting = true;
-            queryClient.cancelQueries({ queryKey: ['downloads'] });
-            
-        },
+		onMutate: () => {
+			isSubmitting = true;
+			queryClient.cancelQueries({ queryKey: ['downloads'] });
+		},
 		onSuccess: () => {
-			// Revalidar las descargas
 			queryClient.invalidateQueries({ queryKey: ['downloads'] });
-			// Limpiar el input
 			url = '';
+		},
+		onSettled: () => {
+			isSubmitting = false;
 		}
 	}));
 
@@ -43,77 +46,37 @@
 				await enqueueDownloadMutation.mutateAsync(url.trim());
 			} catch (error) {
 				console.error('Error enqueuing download:', error);
-			} finally {
-				isSubmitting = false;
 			}
 		}
 	}
 </script>
 
-<div class="download-input-container">
-	<input
+<div class="space-y-4">
+	<Input
 		type="text"
 		bind:value={url}
 		onkeydown={handleSubmit}
 		placeholder="Enter Bandcamp or YouTube Music URL and press Enter"
-		class="url-input"
 		disabled={isSubmitting}
 	/>
 
 	{#if enqueueDownloadMutation.isPending}
-		<div class="status-message loading">Enqueuing download...</div>
+		<Alert.Root class="border-blue-200 bg-blue-50 text-blue-900">
+			<LoaderCircle class="animate-spin" />
+			<Alert.Title>Enqueuing download...</Alert.Title>
+		</Alert.Root>
 	{:else if enqueueDownloadMutation.isError}
-		<div class="status-message error">
-			Error: {enqueueDownloadMutation.error?.message || 'Failed to enqueue download'}
-		</div>
+		<Alert.Root variant="destructive">
+			<AlertCircle />
+			<Alert.Title>Error</Alert.Title>
+			<Alert.Description>
+				{enqueueDownloadMutation.error?.message || 'Failed to enqueue download'}
+			</Alert.Description>
+		</Alert.Root>
 	{:else if enqueueDownloadMutation.isSuccess}
-		<div class="status-message success">Download enqueued successfully!</div>
+		<Alert.Root class="border-green-200 bg-green-50 text-green-900">
+			<CheckCircle2 />
+			<Alert.Title>Download enqueued successfully!</Alert.Title>
+		</Alert.Root>
 	{/if}
 </div>
-
-<style>
-	.download-input-container {
-		margin-bottom: 1rem;
-	}
-
-	.url-input {
-		width: 100%;
-		padding: 0.75rem;
-		font-size: 1rem;
-		border: 2px solid #ddd;
-		border-radius: 8px;
-		transition: border-color 0.2s;
-	}
-
-	.url-input:focus {
-		outline: none;
-		border-color: #4caf50;
-	}
-
-	.url-input:disabled {
-		background-color: #f5f5f5;
-		cursor: not-allowed;
-	}
-
-	.status-message {
-		margin-top: 0.5rem;
-		padding: 0.5rem;
-		border-radius: 4px;
-		font-size: 0.875rem;
-	}
-
-	.status-message.loading {
-		background-color: #dbeafe;
-		color: #1e40af;
-	}
-
-	.status-message.error {
-		background-color: #fee2e2;
-		color: #991b1b;
-	}
-
-	.status-message.success {
-		background-color: #d1fae5;
-		color: #065f46;
-	}
-</style>

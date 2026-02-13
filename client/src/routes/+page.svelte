@@ -23,7 +23,10 @@
 		max-width: 1200px;
 		margin: 2rem auto;
 		padding: 1rem;
-		font-family: system-ui, -apple-system, sans-serif;
+		font-family:
+			system-ui,
+			-apple-system,
+			sans-serif;
 	}
 
 	h1 {

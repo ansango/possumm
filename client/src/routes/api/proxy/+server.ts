@@ -21,8 +21,8 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 			headers: {
 				'Content-Type': response.headers.get('Content-Type') || 'text/plain',
 				'Cache-Control': 'no-cache',
-				'Connection': 'keep-alive',
-			},
+				Connection: 'keep-alive'
+			}
 		});
 	} catch (err) {
 		const message = err instanceof Error ? err.message : 'Unknown error';

@@ -55,5 +55,8 @@
 		"test:coverage": "vitest run --coverage",
 		"test:e2e": "playwright test"
 	},
-	"type": "module"
+	"type": "module",
+	"dependencies": {
+		"lucide-svelte": "^0.564.0"
+	}
 }
