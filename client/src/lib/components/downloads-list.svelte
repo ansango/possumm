@@ -88,7 +88,7 @@
       <Icon.Loader2 class="size-8 animate-spin text-muted-foreground" />
     </div>
   {:else if downloadsQuery.isError}
-    <Alert.Root variant="destructive" >
+    <Alert.Root variant="destructive">
       <Icon.AlertCircle />
       <Alert.Title>Error loading downloads</Alert.Title>
       <Alert.Description>

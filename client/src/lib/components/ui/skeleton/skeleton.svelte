@@ -15,4 +15,3 @@
   class={cn('animate-pulse rounded-md bg-accent', className)}
   {...restProps}
 ></div>
-

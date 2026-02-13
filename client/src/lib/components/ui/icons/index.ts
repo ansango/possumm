@@ -11,6 +11,7 @@ import {
   Music,
   RotateCw,
   Settings,
+  Terminal,
   XCircle
 } from 'lucide-svelte';
 import type { ComponentType } from 'svelte';
@@ -31,6 +32,7 @@ export const Icon = {
   Music,
   RotateCw,
   Settings,
+  Terminal,
   XCircle
 } as const satisfies Record<string, ComponentType>;
 
