@@ -31,6 +31,7 @@ import { CleanupOrphanedFiles } from '@/core/application/download/use-cases/Clea
 import { CleanupOldLogs } from '@/core/application/download/use-cases/CleanupOldLogs';
 import { MarkStalledDownloads } from '@/core/application/download/use-cases/MarkStalledDownloads';
 import { ExecuteYtDlpCommand } from '@/core/application/sandbox/use-cases/ExecuteYtDlpCommand';
+import { ExecuteYtDlpCommandStream } from '@/core/application/sandbox/use-cases/ExecuteYtDlpCommandStream';
 
 // Infrastructure
 import { DownloadWorker } from '@/core/application/download/worker/DownloadWorker';
@@ -72,6 +73,7 @@ export interface AppDependencies {
     cleanupOldLogs: CleanupOldLogs;
     markStalledDownloads: MarkStalledDownloads;
     executeYtDlpCommand: ExecuteYtDlpCommand;
+    executeYtDlpCommandStream: ExecuteYtDlpCommandStream;
   };
   worker: DownloadWorker;
 }
@@ -157,6 +159,7 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
 
   // Create sandbox use cases
   const executeYtDlpCommand = new ExecuteYtDlpCommand(logger);
+  const executeYtDlpCommandStream = new ExecuteYtDlpCommandStream(logger);
 
   // Create worker
   const worker = new DownloadWorker(
@@ -198,7 +201,8 @@ export function createAppDependencies(config: AppConfig, logger: PinoLogger): Ap
       cleanupOrphanedFiles,
       cleanupOldLogs,
       markStalledDownloads,
-      executeYtDlpCommand
+      executeYtDlpCommand,
+      executeYtDlpCommandStream
     },
     worker
   };

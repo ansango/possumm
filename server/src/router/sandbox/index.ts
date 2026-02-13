@@ -5,7 +5,8 @@ import { dependencies } from '@/core/config/app-setup';
 
 // Create handlers with use cases
 const handlers = sandboxHandlers.createSandboxHandlers({
-  executeYtDlpCommand: dependencies.useCases.executeYtDlpCommand
+  executeYtDlpCommand: dependencies.useCases.executeYtDlpCommand,
+  executeYtDlpCommandStream: dependencies.useCases.executeYtDlpCommandStream
 });
 
 // Create router
@@ -14,6 +15,11 @@ const router = createRouter()
   .openapi(
     sandboxRoutes.executeYtDlpCommandRoute,
     handlers.executeYtDlp,
+    sandboxHandlers.sandboxValidationHook
+  )
+  .openapi(
+    sandboxRoutes.executeYtDlpCommandStreamRoute,
+    handlers.executeYtDlpStream,
     sandboxHandlers.sandboxValidationHook
   );
 

@@ -6,8 +6,14 @@
   import { Skeleton } from '$lib/components/ui/skeleton';
   import { Badge } from '$lib/components/ui/badge';
   import { Checkbox } from '$lib/components/ui/checkbox';
+  import { Switch } from '$lib/components/ui/switch';
   import { Icon } from '$lib/components/ui/icons';
-  import { useExecuteYtDlpCommand } from '$lib/queries';
+  import {
+    useExecuteYtDlpCommand,
+    useExecuteYtDlpCommandStream,
+    type YtDlpStreamEvent
+  } from '$lib/queries';
+    import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
 
   let url = $state(
     'https://music.youtube.com/playlist?list=OLAK5uy_kdLOnnGvE3A99ne7nhjnmiytoVAKroUys'
@@ -15,9 +21,11 @@
   let command = $state('');
   let skipDownload = $state(true);
   let flatPlaylist = $state(false);
+  let useStreaming = $state(true);
 
   let isCopying = $state(false);
   const executeMutation = useExecuteYtDlpCommand();
+  const streamCommand = useExecuteYtDlpCommandStream();
 
   function executeCommand() {
     if (!command.trim()) return;
@@ -42,9 +50,19 @@
     // Replace double quotes with single quotes for the server
     const serverCommand = fullCommand.replace(/"/g, "'");
 
-    executeMutation.mutate({
-      command: serverCommand
-    });
+    if (useStreaming) {
+      streamCommand.execute(serverCommand);
+    } else {
+      executeMutation.mutate({
+        command: serverCommand
+      });
+    }
+  }
+
+  function cancelCommand() {
+    if (useStreaming && streamCommand.isExecuting) {
+      streamCommand.abort();
+    }
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -55,6 +73,22 @@
   }
 
   function getFormattedOutput(): string {
+    if (useStreaming) {
+      // Para streaming, mostrar todos los eventos stdout
+      const stdoutEvents = streamCommand.events.filter((e) => e.type === 'stdout');
+      if (stdoutEvents.length === 0) return '';
+
+      const output = stdoutEvents.map((e) => e.data).join('\n');
+
+      // Intentar parsear como JSON
+      try {
+        const parsed = JSON.parse(output);
+        return JSON.stringify(parsed, null, 2);
+      } catch {
+        return output;
+      }
+    }
+
     if (!executeMutation.data) return '';
 
     if (executeMutation.data.isJsonOutput) {
@@ -64,6 +98,53 @@
     return typeof executeMutation.data.stdout === 'string'
       ? executeMutation.data.stdout
       : JSON.stringify(executeMutation.data.stdout, null, 2);
+  }
+
+  function getStderr(): string {
+    if (useStreaming) {
+      const stderrEvents = streamCommand.events.filter((e) => e.type === 'stderr');
+      return stderrEvents.map((e) => e.data).join('\n');
+    }
+    return executeMutation.data?.stderr || '';
+  }
+
+  function getExitCode(): number | null {
+    if (useStreaming) {
+      const completeEvent = streamCommand.events.find((e) => e.type === 'complete') as
+        | Extract<YtDlpStreamEvent, { type: 'complete' }>
+        | undefined;
+      return completeEvent?.exitCode ?? null;
+    }
+    return executeMutation.data?.exitCode ?? null;
+  }
+
+  function isExecuting(): boolean {
+    return useStreaming ? streamCommand.isExecuting : executeMutation.isPending;
+  }
+
+  function hasError(): boolean {
+    if (useStreaming) {
+      return streamCommand.error !== null || streamCommand.events.some((e) => e.type === 'error');
+    }
+    return executeMutation.isError;
+  }
+
+  function getError(): string {
+    if (useStreaming) {
+      if (streamCommand.error) return streamCommand.error.message;
+      const errorEvent = streamCommand.events.find((e) => e.type === 'error') as
+        | Extract<YtDlpStreamEvent, { type: 'error' }>
+        | undefined;
+      return errorEvent?.message || '';
+    }
+    return executeMutation.error?.message || '';
+  }
+
+  function hasOutput(): boolean {
+    if (useStreaming) {
+      return streamCommand.events.length > 0 && !streamCommand.isExecuting;
+    }
+    return executeMutation.isSuccess;
   }
 
   function getFullCommand(): string {
@@ -107,6 +188,20 @@
   </div>
 
   <div class="flex flex-col gap-4">
+    <!-- Mode Switch -->
+    <div class="flex items-center justify-between rounded-lg border bg-card p-4">
+      <div class="space-y-0.5">
+        <Label for="streaming-mode" class="text-base">Streaming Mode (SSE)</Label>
+        <p class="text-sm text-muted-foreground">
+          {useStreaming
+            ? 'Real-time feedback with Server-Sent Events'
+            : 'Traditional REST request/response'}
+        </p>
+      </div>
+      <Switch id="streaming-mode" bind:checked={useStreaming} />
+    </div>
+
+    <!-- URL Input -->
     <div class="space-y-2">
       <Label for="url">URL (optional)</Label>
       <Input
@@ -117,21 +212,24 @@
         class="font-mono"
       />
     </div>
+
+    <!-- Flags -->
     <div class="flex items-center gap-2">
       <Checkbox id="skip-download" bind:checked={skipDownload} />
       <Label for="skip-download" class="cursor-pointer text-sm font-normal">
-        Add <pre class="rounded bg-muted px-1 py-0.5">--skip-download</pre>
+        Add <code class="rounded bg-muted px-1 py-0.5">--skip-download</code>
         flag (useful for extracting metadata without downloading)
       </Label>
     </div>
     <div class="flex items-center gap-2">
       <Checkbox id="flat-playlist" bind:checked={flatPlaylist} />
       <Label for="flat-playlist" class="cursor-pointer text-sm font-normal">
-        Add <pre class="rounded bg-muted px-1 py-0.5">--flat-playlist</pre>
+        Add <code class="rounded bg-muted px-1 py-0.5">--flat-playlist</code>
         flag (useful for extracting metadata without downloading)
       </Label>
     </div>
 
+    <!-- Command Input -->
     <div class="space-y-2">
       <Label for="command">Command (without "yt-dlp" prefix)</Label>
       <div class="flex gap-2">
@@ -141,15 +239,20 @@
           placeholder="--version"
           onkeydown={handleKeydown}
           class="font-mono"
+          disabled={isExecuting()}
         />
-        <Button onclick={executeCommand} disabled={executeMutation.isPending || !command.trim()}>
-          {executeMutation.isPending ? 'Executing...' : 'Execute'}
+        <Button onclick={executeCommand} disabled={isExecuting() || !command.trim()}>
+          {isExecuting() ? 'Executing...' : 'Execute'}
         </Button>
+        {#if useStreaming && streamCommand.isExecuting}
+          <Button onclick={cancelCommand} variant="destructive">Cancel</Button>
+        {/if}
       </div>
 
       <p class="text-sm text-muted-foreground">Press Cmd+Enter (Mac) or Ctrl+Enter to execute</p>
     </div>
 
+    <!-- Full Command Preview -->
     {#if command.trim()}
       <div class="space-y-2">
         <Label>Full command to execute in terminal</Label>
@@ -176,27 +279,67 @@
       </div>
     {/if}
 
-    {#if executeMutation.isError}
-      <div class="rounded-lg border border-destructive bg-destructive/10 p-4">
-        <p class="text-sm text-destructive">{executeMutation.error.message}</p>
+    <!-- Streaming Events (only in streaming mode) -->
+    {#if useStreaming && streamCommand.events.length > 0}
+   
+      <div class="space-y-2">
+        <Label>Event Stream</Label>
+        <ScrollArea
+          class="h-160 space-y-1 overflow-y-auto rounded-md border bg-muted p-3 font-mono text-xs"
+        >
+          {#each streamCommand.events as event, i (i)}
+            <div class="flex flex-col items-start gap-2">
+              {#if event.type === 'start'}
+                <Badge variant="outline" class="shrink-0">▶️ start</Badge>
+                <span class="text-muted-foreground">{event.command.join(' ')}</span>
+              {:else if event.type === 'stdout'}
+                <Badge variant="outline" class="shrink-0">📤 stdout</Badge>
+                <pre class="whitespace-pre-wrap">{event.data}</pre>
+              {:else if event.type === 'stderr'}
+                <Badge variant="secondary" class="shrink-0">⚠️ stderr</Badge>
+                <pre class="whitespace-pre-wrap text-muted-foreground">{event.data}</pre>
+              {:else if event.type === 'progress'}
+                <Badge variant="default" class="shrink-0">📊 progress</Badge>
+                <span>{event.percent?.toFixed(1)}% {event.eta ? `(ETA: ${event.eta})` : ''}</span>
+              {:else if event.type === 'complete'}
+                <Badge variant="default" class="shrink-0">✅ complete</Badge>
+                <span>Exit code: {event.exitCode}</span>
+              {:else if event.type === 'error'}
+                <Badge variant="destructive" class="shrink-0">❌ error</Badge>
+                <span class="text-destructive">{event.message}</span>
+              {/if}
+            </div>
+          {/each}
+        </ScrollArea>
       </div>
     {/if}
 
-    {#if executeMutation.isPending}
+    <!-- Error Display -->
+    {#if hasError()}
+      <div class="rounded-lg border border-destructive bg-destructive/10 p-4">
+        <p class="text-sm text-destructive">{getError()}</p>
+      </div>
+    {/if}
+
+    <!-- Loading State -->
+    {#if isExecuting()}
       <div class="space-y-2">
         <Skeleton class="h-4 w-24" />
         <Skeleton class="h-50 w-full" />
       </div>
     {/if}
 
-    {#if executeMutation.isSuccess && executeMutation.data}
+    <!-- Output Display -->
+    {#if hasOutput()}
       <div class="flex flex-1 flex-col gap-4 overflow-hidden">
         <div class="flex items-center gap-2">
           <h2 class="text-lg font-semibold">Response</h2>
-          <Badge variant={executeMutation.data.exitCode === 0 ? 'default' : 'destructive'}>
-            Exit Code: {executeMutation.data.exitCode}
-          </Badge>
-          {#if executeMutation.data.isJsonOutput}
+          {#if getExitCode() !== null}
+            <Badge variant={getExitCode() === 0 ? 'default' : 'destructive'}>
+              Exit Code: {getExitCode()}
+            </Badge>
+          {/if}
+          {#if !useStreaming && executeMutation.data?.isJsonOutput}
             <Badge variant="outline">JSON</Badge>
           {/if}
         </div>
@@ -212,12 +355,12 @@
             />
           </div>
 
-          {#if executeMutation.data.stderr}
+          {#if getStderr()}
             <div class="flex flex-col gap-2">
               <Label for="stderr">Standard Error</Label>
               <Textarea
                 id="stderr"
-                value={executeMutation.data.stderr}
+                value={getStderr()}
                 readonly
                 class="resize-none font-mono text-xs"
                 rows={5}

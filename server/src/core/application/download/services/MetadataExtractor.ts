@@ -110,7 +110,12 @@ export class MetadataExtractor {
         'bun',
         '--skip-download',
         '--dump-json',
-        '--flat-playlist',
+        '--no-warnings',
+        '--add-metadata',
+        '--parse-metadata',
+        '%(artist|uploader)s:%(artist)s',
+        '--parse-metadata',
+        '%(album|playlist_title)s:%(album)s',
         url
       ];
       this.logger.info(`Spawning yt-dlp process: ${cmd.join(' ')}`);

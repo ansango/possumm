@@ -1,12 +1,15 @@
 import { AppRouteHandler, AppRouteHook } from '@/types';
-import { ExecuteYtDlpCommandRoute } from './routes';
+import { ExecuteYtDlpCommandRoute, ExecuteYtDlpCommandStreamRoute } from './routes';
 import { ExecuteYtDlpCommand } from '@/core/application/sandbox/use-cases/ExecuteYtDlpCommand';
+import { ExecuteYtDlpCommandStream } from '@/core/application/sandbox/use-cases/ExecuteYtDlpCommandStream';
+import { streamSSE } from 'hono/streaming';
 
 /**
  * Collection of sandbox-related use cases injected into handlers.
  */
 interface SandboxUseCases {
   executeYtDlpCommand: ExecuteYtDlpCommand;
+  executeYtDlpCommandStream: ExecuteYtDlpCommandStream;
 }
 
 /**
@@ -78,8 +81,69 @@ export function createSandboxHandlers(useCases: SandboxUseCases) {
     }
   };
 
+  /**
+   * Handler for executing yt-dlp commands with SSE streaming.
+   *
+   * POST /api/sandbox/yt-dlp/stream
+   *
+   * Streams real-time execution events via Server-Sent Events:
+   * - start: Command execution begins
+   * - stdout: Line from stdout
+   * - stderr: Line from stderr
+   * - progress: Download progress (percent, eta)
+   * - complete: Command finished
+   * - error: Fatal error occurred
+   *
+   * Maps errors to HTTP status codes:
+   * - 200: SSE stream established
+   * - 400: Invalid command format
+   * - 500: Internal error during setup
+   *
+   * @example
+   * ```
+   * POST /api/sandbox/yt-dlp/stream
+   * Content-Type: application/json
+   *
+   * {
+   *   "command": "--skip-download --dump-json \"https://music.youtube.com/watch?v=abc123\""
+   * }
+   *
+   * Response 200 (SSE stream):
+   * event: start
+   * data: {"type":"start","command":["yt-dlp","--js-runtime","bun","--skip-download","--dump-json","https://..."]}
+   *
+   * event: stdout
+   * data: {"type":"stdout","data":"{\"title\":\"Song Name\",...}"}
+   *
+   * event: complete
+   * data: {"type":"complete","exitCode":0}
+   * ```
+   */
+  const executeYtDlpStream: AppRouteHandler<ExecuteYtDlpCommandStreamRoute> = async (c) => {
+    try {
+      const body = c.req.valid('json');
+
+      return streamSSE(c, async (stream) => {
+        await useCases.executeYtDlpCommandStream.execute(body.command, async (event) => {
+          try {
+            await stream.writeSSE({
+              event: event.type,
+              data: JSON.stringify(event)
+            });
+          } catch (error) {
+            console.error('Error writing SSE event:', error);
+          }
+        });
+      });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      return c.json({ error: message }, 500);
+    }
+  };
+
   return {
-    executeYtDlp
+    executeYtDlp,
+    executeYtDlpStream
   };
 }
 
