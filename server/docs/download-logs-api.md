@@ -101,30 +101,30 @@ Recupera los logs de una descarga con paginación.
 
 ```json
 {
-	"logs": [
-		{
-			"id": 150,
-			"downloadId": 42,
-			"eventType": "download:completed",
-			"message": "Download completed successfully",
-			"metadata": { "filePath": "/tmp/downloads/song.opus" },
-			"timestamp": "2024-01-15T11:45:30Z"
-		},
-		{
-			"id": 149,
-			"downloadId": 42,
-			"eventType": "download:progress",
-			"message": "Download progress: 95%",
-			"metadata": { "progress": 95 },
-			"timestamp": "2024-01-15T11:45:20Z"
-		}
-	],
-	"pagination": {
-		"page": 1,
-		"limit": 50,
-		"total": 85,
-		"totalPages": 2
-	}
+  "logs": [
+    {
+      "id": 150,
+      "downloadId": 42,
+      "eventType": "download:completed",
+      "message": "Download completed successfully",
+      "metadata": { "filePath": "/tmp/downloads/song.opus" },
+      "timestamp": "2024-01-15T11:45:30Z"
+    },
+    {
+      "id": 149,
+      "downloadId": 42,
+      "eventType": "download:progress",
+      "message": "Download progress: 95%",
+      "metadata": { "progress": 95 },
+      "timestamp": "2024-01-15T11:45:20Z"
+    }
+  ],
+  "pagination": {
+    "page": 1,
+    "limit": 50,
+    "total": 85,
+    "totalPages": 2
+  }
 }
 ```
 
@@ -132,7 +132,7 @@ Recupera los logs de una descarga con paginación.
 
 ```json
 {
-	"error": "Download 42 not found"
+  "error": "Download 42 not found"
 }
 ```
 
@@ -180,17 +180,17 @@ Cada use case que antes emitía eventos SSE ahora crea logs persistentes:
 ```typescript
 // Antes (SSE)
 this.eventEmitter.emitWithId('download:started', {
-	downloadId: download.id,
-	url: download.url,
-	status: 'in_progress'
+  downloadId: download.id,
+  url: download.url,
+  status: 'in_progress'
 });
 
 // Ahora (Logs)
 await this.downloadLogRepo.create({
-	downloadId: download.id,
-	eventType: 'download:started',
-	message: `Starting download: ${download.url}`,
-	metadata: { url: download.url }
+  downloadId: download.id,
+  eventType: 'download:started',
+  message: `Starting download: ${download.url}`,
+  metadata: { url: download.url }
 });
 ```
 

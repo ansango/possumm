@@ -293,11 +293,11 @@ stateDiagram-v2
 
 ```typescript
 interface WorkerState {
-	isRunning: boolean;
-	currentDownloadId: number | null;
-	lastProcessedAt: Date | null;
-	processedCount: number;
-	errorCount: number;
+  isRunning: boolean;
+  currentDownloadId: number | null;
+  lastProcessedAt: Date | null;
+  processedCount: number;
+  errorCount: number;
 }
 ```
 
@@ -338,14 +338,14 @@ private async mainLoop(): Promise<void> {
 
 ```typescript
 this.cleanupInterval = setInterval(
-	async () => {
-		try {
-			await this.cleanupOrphanedFiles.execute();
-		} catch (error) {
-			this.logger.error({ error }, 'Cleanup failed');
-		}
-	},
-	7 * 24 * 60 * 60 * 1000
+  async () => {
+    try {
+      await this.cleanupOrphanedFiles.execute();
+    } catch (error) {
+      this.logger.error({ error }, 'Cleanup failed');
+    }
+  },
+  7 * 24 * 60 * 60 * 1000
 );
 ```
 
@@ -353,14 +353,14 @@ this.cleanupInterval = setInterval(
 
 ```typescript
 this.stalledCheckInterval = setInterval(
-	async () => {
-		try {
-			await this.markStalledDownloads.execute();
-		} catch (error) {
-			this.logger.error({ error }, 'Stalled check failed');
-		}
-	},
-	5 * 60 * 1000
+  async () => {
+    try {
+      await this.markStalledDownloads.execute();
+    } catch (error) {
+      this.logger.error({ error }, 'Stalled check failed');
+    }
+  },
+  5 * 60 * 1000
 );
 ```
 

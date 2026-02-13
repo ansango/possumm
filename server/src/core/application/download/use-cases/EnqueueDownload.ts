@@ -147,7 +147,7 @@ export class EnqueueDownload {
       processId: null
     });
 
-    this.logger.info({ downloadId: download.id, url }, 'Download enqueued');
+    this.logger.info(`Download enqueued: id=${download.id}, url=${url}`);
 
     // Log enqueued event
     await this.downloadLogRepo.create({
@@ -159,7 +159,7 @@ export class EnqueueDownload {
 
     // Extract metadata asynchronously (don't await)
     this.extractAndLinkMetadata(download.id, url, provider).catch((error) => {
-      this.logger.warn({ error, downloadId: download.id }, 'Failed to extract metadata');
+      this.logger.warn(`Failed to extract metadata: downloadId=${download.id}, error=${error}`);
     });
 
     return {
@@ -213,8 +213,10 @@ export class EnqueueDownload {
       // Create media if doesn't exist
       if (!media) {
         media = await this.mediaRepo.create(MediaItem.fromYtDlpMetadata(metadata, provider));
-        this.logger.info({ metadata }, 'Metadata extracted');
-        this.logger.info({ mediaId: media.id, title: media.title }, 'Media created');
+        this.logger.info(
+          `Metadata extracted: title=${metadata.title}, artist=${metadata.artist || metadata.uploader}`
+        );
+        this.logger.info(`Media created: id=${media.id}, title=${media.title}`);
 
         // Log metadata found
         const isPlaylist = metadata._type === 'playlist';
@@ -241,8 +243,7 @@ export class EnqueueDownload {
       }
     } catch (error) {
       this.logger.warn(
-        { error, downloadId },
-        'Metadata extraction failed, continuing without media link'
+        `Metadata extraction failed for downloadId=${downloadId}: ${error}, continuing without media link`
       );
     }
   }

@@ -128,14 +128,14 @@ Este factory demuestra la **tolerancia a metadata incompleta**: todos los campos
 ```typescript
 // Metadata real de Bandcamp puede faltar artist
 const bandcampData = {
-	id: 'xyz789',
-	title: 'Album Name',
-	// artist: undefined (no proporcionado)
-	thumbnail: 'https://f4.bcbits.com/img/...',
-	entries: [
-		{ title: 'Track 1', duration: 180 },
-		{ title: 'Track 2', duration: null } // sin duration
-	]
+  id: 'xyz789',
+  title: 'Album Name',
+  // artist: undefined (no proporcionado)
+  thumbnail: 'https://f4.bcbits.com/img/...',
+  entries: [
+    { title: 'Track 1', duration: 180 },
+    { title: 'Track 2', duration: null } // sin duration
+  ]
 };
 
 const media = MediaItem.fromYtDlpMetadata(bandcampData, 'bandcamp');

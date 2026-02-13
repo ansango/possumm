@@ -6,14 +6,14 @@ import { withCache } from '@/lib/db/cache/utils';
  * Editable fields for media metadata updates.
  */
 interface EditableMediaFields {
-	title?: string | null;
-	artist?: string | null;
-	album?: string | null;
-	albumArtist?: string | null;
-	year?: string | null;
-	coverUrl?: string | null;
-	duration?: number | null;
-	tracks?: { track: number | null; title: string | null; duration: number | null }[] | null;
+  title?: string | null;
+  artist?: string | null;
+  album?: string | null;
+  albumArtist?: string | null;
+  year?: string | null;
+  coverUrl?: string | null;
+  duration?: number | null;
+  tracks?: { track: number | null; title: string | null; duration: number | null }[] | null;
 }
 
 /**
@@ -58,82 +58,82 @@ interface EditableMediaFields {
  * @see SQLiteMediaRepository - For underlying implementation
  */
 export class CachedMediaRepository implements MediaRepository {
-	/**
-	 * Creates a new CachedMediaRepository decorator.
-	 *
-	 * @param repository - Underlying repository to wrap with caching
-	 */
-	constructor(private readonly repository: MediaRepository) {}
+  /**
+   * Creates a new CachedMediaRepository decorator.
+   *
+   * @param repository - Underlying repository to wrap with caching
+   */
+  constructor(private readonly repository: MediaRepository) {}
 
-	/**
-	 * Finds media by ID with caching.
-	 *
-	 * Cache key: `media:{id}`
-	 * TTL: 5 minutes
-	 *
-	 * @param id - Media ID
-	 * @returns Cached or fresh media
-	 */
-	async findById(id: number): Promise<MediaItem | null> {
-		return withCache(
-			`media:${id}`,
-			() => this.repository.findById(id),
-			5 * 60 * 1000 // 5 minutes
-		);
-	}
+  /**
+   * Finds media by ID with caching.
+   *
+   * Cache key: `media:{id}`
+   * TTL: 5 minutes
+   *
+   * @param id - Media ID
+   * @returns Cached or fresh media
+   */
+  async findById(id: number): Promise<MediaItem | null> {
+    return withCache(
+      `media:${id}`,
+      () => this.repository.findById(id),
+      5 * 60 * 1000 // 5 minutes
+    );
+  }
 
-	/**
-	 * Finds media by provider and ID with caching.
-	 *
-	 * Cache key: `media:provider:{provider}:{providerId}`
-	 * TTL: 5 minutes
-	 *
-	 * Critical for duplicate detection during metadata extraction.
-	 *
-	 * @param provider - Platform provider
-	 * @param providerId - Provider-specific ID
-	 * @returns Cached or fresh media
-	 */
-	async findByProviderAndProviderId(
-		provider: Provider,
-		providerId: string
-	): Promise<MediaItem | null> {
-		return withCache(
-			`media:provider:${provider}:${providerId}`,
-			() => this.repository.findByProviderAndProviderId(provider, providerId),
-			5 * 60 * 1000
-		);
-	}
+  /**
+   * Finds media by provider and ID with caching.
+   *
+   * Cache key: `media:provider:{provider}:{providerId}`
+   * TTL: 5 minutes
+   *
+   * Critical for duplicate detection during metadata extraction.
+   *
+   * @param provider - Platform provider
+   * @param providerId - Provider-specific ID
+   * @returns Cached or fresh media
+   */
+  async findByProviderAndProviderId(
+    provider: Provider,
+    providerId: string
+  ): Promise<MediaItem | null> {
+    return withCache(
+      `media:provider:${provider}:${providerId}`,
+      () => this.repository.findByProviderAndProviderId(provider, providerId),
+      5 * 60 * 1000
+    );
+  }
 
-	async findAll(page: number, pageSize: number): Promise<MediaItem[]> {
-		return withCache(
-			`media:list:${page}:${pageSize}`,
-			() => this.repository.findAll(page, pageSize),
-			5 * 60 * 1000
-		);
-	}
+  async findAll(page: number, pageSize: number): Promise<MediaItem[]> {
+    return withCache(
+      `media:list:${page}:${pageSize}`,
+      () => this.repository.findAll(page, pageSize),
+      5 * 60 * 1000
+    );
+  }
 
-	async countAll(): Promise<number> {
-		return withCache('media:count', () => this.repository.countAll(), 5 * 60 * 1000);
-	}
+  async countAll(): Promise<number> {
+    return withCache('media:count', () => this.repository.countAll(), 5 * 60 * 1000);
+  }
 
-	async create(media: Omit<MediaItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<MediaItem> {
-		// No caching for write operations
-		return this.repository.create(media);
-	}
+  async create(media: Omit<MediaItem, 'id' | 'createdAt' | 'updatedAt'>): Promise<MediaItem> {
+    // No caching for write operations
+    return this.repository.create(media);
+  }
 
-	async updateMetadata(id: number, fields: EditableMediaFields): Promise<void> {
-		// No caching for write operations
-		return this.repository.updateMetadata(id, fields);
-	}
+  async updateMetadata(id: number, fields: EditableMediaFields): Promise<void> {
+    // No caching for write operations
+    return this.repository.updateMetadata(id, fields);
+  }
 
-	async delete(id: number): Promise<void> {
-		// No caching for write operations
-		return this.repository.delete(id);
-	}
+  async delete(id: number): Promise<void> {
+    // No caching for write operations
+    return this.repository.delete(id);
+  }
 
-	async deleteAll(): Promise<void> {
-		// No caching for write operations
-		return this.repository.deleteAll();
-	}
+  async deleteAll(): Promise<void> {
+    // No caching for write operations
+    return this.repository.deleteAll();
+  }
 }

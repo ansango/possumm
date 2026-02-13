@@ -162,10 +162,10 @@ async extract(url: string, provider: Provider): Promise<MetadataResult> {
 
 ```json
 {
-	"id": "abc123",
-	"title": "Song Name",
-	"artist": "Artist Name",
-	"duration": 240
+  "id": "abc123",
+  "title": "Song Name",
+  "artist": "Artist Name",
+  "duration": 240
 }
 ```
 
@@ -215,28 +215,28 @@ const reader = process.stderr.getReader();
 const decoder = new TextDecoder();
 
 const readStderr = async () => {
-	while (true) {
-		const { done, value } = await reader.read();
-		if (done) break;
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
 
-		const text = decoder.decode(value, { stream: true });
-		const lines = text.split('\n');
+    const text = decoder.decode(value, { stream: true });
+    const lines = text.split('\n');
 
-		for (const line of lines) {
-			const match = progressRegex.exec(line);
-			if (match) {
-				// Cap a 99% durante descarga
-				const progress = Math.min(99, Math.floor(parseFloat(match[1])));
-				await onProgress(progress);
-			}
-		}
-	}
+    for (const line of lines) {
+      const match = progressRegex.exec(line);
+      if (match) {
+        // Cap a 99% durante descarga
+        const progress = Math.min(99, Math.floor(parseFloat(match[1])));
+        await onProgress(progress);
+      }
+    }
+  }
 };
 
 // Esperar exit del proceso
 const exitCode = await process.exited;
 if (exitCode === 0) {
-	await onProgress(100); // Solo reportar 100% en éxito
+  await onProgress(100); // Solo reportar 100% en éxito
 }
 ```
 
@@ -245,40 +245,40 @@ if (exitCode === 0) {
 ```typescript
 // Args comunes (ambos providers)
 const common = [
-	'yt-dlp',
-	'--cookies-from-browser',
-	'firefox',
-	'-x',
-	'--audio-format',
-	'mp3',
-	'--audio-quality',
-	'0',
-	'--embed-thumbnail',
-	'--add-metadata',
-	'-P',
-	outputPath
+  'yt-dlp',
+  '--cookies-from-browser',
+  'firefox',
+  '-x',
+  '--audio-format',
+  'mp3',
+  '--audio-quality',
+  '0',
+  '--embed-thumbnail',
+  '--add-metadata',
+  '-P',
+  outputPath
 ];
 
 // Bandcamp: usa uploader/album para paths
 if (provider === 'bandcamp') {
-	return [...common, '-o', '%(uploader)s/%(album,title)s/%(playlist_index)02d %(title)s.%(ext)s'];
+  return [...common, '-o', '%(uploader)s/%(album,title)s/%(playlist_index)02d %(title)s.%(ext)s'];
 }
 
 // YouTube Music: normalización extensa metadata
 return [
-	...common,
-	'--replace-in-metadata',
-	'artist',
-	' - Topic$',
-	'', // Remove "- Topic"
-	'--replace-in-metadata',
-	'album_artist',
-	'Various Artists',
-	'Varios Artistas',
-	'--parse-metadata',
-	'%(playlist_index|track_number)s:%(track_number)s',
-	'-o',
-	'%(album_artist|Varios Artistas)s/%(album)s/%(playlist_index)02d %(title)s.%(ext)s'
+  ...common,
+  '--replace-in-metadata',
+  'artist',
+  ' - Topic$',
+  '', // Remove "- Topic"
+  '--replace-in-metadata',
+  'album_artist',
+  'Various Artists',
+  'Varios Artistas',
+  '--parse-metadata',
+  '%(playlist_index|track_number)s:%(track_number)s',
+  '-o',
+  '%(album_artist|Varios Artistas)s/%(album)s/%(playlist_index)02d %(title)s.%(ext)s'
 ];
 ```
 
@@ -332,9 +332,9 @@ if (!hasSpace) {
 
 ```typescript
 interface StatFsResult {
-	bavail: number; // Available blocks for unprivileged users
-	bsize: number; // Block size in bytes
-	// ... otros campos
+  bavail: number; // Available blocks for unprivileged users
+  bsize: number; // Block size in bytes
+  // ... otros campos
 }
 
 // Ejemplo: 10 GB disponibles

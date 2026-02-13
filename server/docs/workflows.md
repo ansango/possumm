@@ -64,7 +64,7 @@ const normalizedUrl = this.urlNormalizer.normalize(url);
 // Buscar downloads activos con misma URL normalizada
 const existingDownload = await this.downloadRepo.findActiveByNormalizedUrl(normalizedUrl);
 if (existingDownload) {
-	throw new Error('A download for this URL is already pending or in progress');
+  throw new Error('A download for this URL is already pending or in progress');
 }
 ```
 
@@ -74,8 +74,8 @@ if (existingDownload) {
 // Verificar límite máximo de descargas pendientes
 const pendingCount = await this.downloadRepo.countByStatus('pending');
 if (pendingCount >= this.maxPending) {
-	// default: 10
-	throw new Error(`Maximum ${this.maxPending} pending downloads reached`);
+  // default: 10
+  throw new Error(`Maximum ${this.maxPending} pending downloads reached`);
 }
 ```
 
@@ -139,11 +139,11 @@ const progressRegex = /\[download\]\s+(\d+\.?\d*)%/;
 
 const lines = stderrText.split('\n');
 for (const line of lines) {
-	const match = progressRegex.exec(line);
-	if (match) {
-		const progress = Math.min(99, Math.floor(parseFloat(match[1])));
-		await onProgress(progress); // Cap a 99% durante descarga
-	}
+  const match = progressRegex.exec(line);
+  if (match) {
+    const progress = Math.min(99, Math.floor(parseFloat(match[1])));
+    await onProgress(progress); // Cap a 99% durante descarga
+  }
 }
 // Reportar 100% solo en exit exitoso
 ```
@@ -207,13 +207,13 @@ sequenceDiagram
 ```typescript
 // Verificar estado cancelable
 if (download.status !== 'pending' && download.status !== 'in_progress') {
-	throw new Error(`Cannot cancel download with status: ${download.status}`);
+  throw new Error(`Cannot cancel download with status: ${download.status}`);
 }
 
 // Matar proceso yt-dlp si está en ejecución
 if (download.processId && download.status === 'in_progress') {
-	this.downloadExecutor.cancel(download.processId);
-	// Envía SIGKILL al proceso
+  this.downloadExecutor.cancel(download.processId);
+  // Envía SIGKILL al proceso
 }
 
 // Limpiar estado throttle de eventos de progreso
@@ -262,23 +262,23 @@ sequenceDiagram
 ```typescript
 // Validar estado reintentable
 if (download.status !== 'failed' && download.status !== 'cancelled') {
-	throw new Error(`Cannot retry download with status: ${download.status}`);
+  throw new Error(`Cannot retry download with status: ${download.status}`);
 }
 
 // Reset completo a estado inicial
 await this.downloadRepo.updateStatus(
-	downloadId,
-	'pending', // nuevo status
-	0, // progress reset
-	null, // clear error_message
-	null // clear file_path
+  downloadId,
+  'pending', // nuevo status
+  0, // progress reset
+  null, // clear error_message
+  null // clear file_path
 );
 
 // Re-emitir evento de encolado
 this.eventEmitter.emitWithId('download:enqueued', {
-	downloadId,
-	url: download.url,
-	status: 'pending'
+  downloadId,
+  url: download.url,
+  status: 'pending'
 });
 ```
 
@@ -328,20 +328,20 @@ sequenceDiagram
 const oldDownloads = await this.downloadRepo.findOldCompleted(this.retentionDays);
 
 for (const download of oldDownloads) {
-	try {
-		// Eliminar archivo si existe
-		if (download.filePath && (await exists(download.filePath))) {
-			await rm(download.filePath, { recursive: true, force: true });
-			filesDeleted++;
-		}
+  try {
+    // Eliminar archivo si existe
+    if (download.filePath && (await exists(download.filePath))) {
+      await rm(download.filePath, { recursive: true, force: true });
+      filesDeleted++;
+    }
 
-		// Eliminar registro DB
-		await this.downloadRepo.delete(download.id);
-		downloadsDeleted++;
-	} catch (error) {
-		// Log error pero continuar limpieza
-		this.logger.warn({ error, downloadId: download.id }, 'Failed to cleanup');
-	}
+    // Eliminar registro DB
+    await this.downloadRepo.delete(download.id);
+    downloadsDeleted++;
+  } catch (error) {
+    // Log error pero continuar limpieza
+    this.logger.warn({ error, downloadId: download.id }, 'Failed to cleanup');
+  }
 }
 ```
 

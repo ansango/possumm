@@ -6,9 +6,9 @@ import download from './download';
 const routes = [health, download];
 
 const router = (app: OpenAPIHono) => {
-	routes.forEach((route) => {
-		app.route('/', route);
-	});
+  routes.forEach((route) => {
+    app.route('/', route);
+  });
 };
 
 export default router;
