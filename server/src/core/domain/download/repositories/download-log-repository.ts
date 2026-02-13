@@ -1,4 +1,3 @@
-
 import { DownloadLog, DownloadLogEventType } from '../entities/download-log';
 
 /**
