@@ -1,5 +1,5 @@
 ---
-description: 'This custom agent assists in backend engineering tasks, including designing and implementing server-side logic following DDD architecture patterns in SvelteKit.'
+description: 'This custom agent assists in backend engineering tasks, including designing and implementing server-side logic following DDD architecture patterns.'
 tools:
   [
     'runCommands',
@@ -10,7 +10,6 @@ tools:
     'search',
     'vscode',
     'web',
-    'svelte/*',
     'ESLint/*',
     'extensions',
     'todos',
@@ -32,7 +31,7 @@ Follow this **mandatory workflow** for every backend task to ensure quality and 
 ### Step-by-Step Process:
 
 1. **Understand the requirement**
-   - For SvelteKit server patterns: Call `list-sections` → `get-documentation`
+   - For Hono server patterns: Call `list-sections` → `get-documentation`
    - Identify the domain concepts involved (entities, value objects, behaviors)
 
 2. **Design the DDD layers**
@@ -109,7 +108,7 @@ The **domain layer** contains the core business logic. It has NO external depend
 
 - ❌ Database queries or ORM code
 - ❌ HTTP requests or external API calls
-- ❌ Framework-specific code (SvelteKit, etc.)
+- ❌ Framework-specific code (Hono, etc.)
 - ❌ Concrete implementations
 
 #### Example: Entity
@@ -464,89 +463,48 @@ export const container = {
 } as const;
 ```
 
-#### Usage in SvelteKit:
+#### Usage in Hono:
 
 ```typescript
-// src/routes/api/users/+server.ts
+// src/router/download/handlers.ts
 
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { container } from '$core/config/container';
+import { AppRouteHandler, AppRouteHook } from "@/types";
+import { EnqueueDownloadRoute, GetDownloadStatusRoute } from "./routes";
 
-export const POST: RequestHandler = async ({ request }) => {
-	const body = await request.json();
+export function createDownloadHandlers(useCases: DownloadUseCases) {
+  /**
+   * Handler for enqueueing a new download.
+   * POST /api/downloads
+   */
+  const enqueue: AppRouteHandler<EnqueueDownloadRoute> = async (c) => {
+    try {
+      const body = c.req.valid("json");
+      const result = await useCases.enqueueDownload.execute(body.url);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return c.json({ error: message }, 400);
+    }
+  };
 
-	try {
-		const result = await container.useCases.user.create.execute(body);
-		return json(result, { status: 201 });
-	} catch (error) {
-		return json({ error: (error as Error).message }, { status: 400 });
-	}
-};
+  /**
+   * Handler for retrieving download status.
+   * GET /api/downloads/:id
+   */
+  const getStatus: AppRouteHandler<GetDownloadStatusRoute> = async (c) => {
+    try {
+      const { id } = c.req.valid("param");
+      const result = await useCases.getDownloadStatus.execute(id);
+      return c.json(result, 200);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return c.json({ error: message }, 404);
+    }
+  };
 
-export const GET: RequestHandler = async ({ url }) => {
-	const id = url.searchParams.get('id');
-
-	if (!id) {
-		return json({ error: 'Missing id parameter' }, { status: 400 });
-	}
-
-	const result = await container.useCases.user.getById.execute(id);
-
-	if (!result) {
-		return json({ error: 'User not found' }, { status: 404 });
-	}
-
-	return json(result);
-};
+  return { enqueue, getStatus };
+}
 ```
-
----
-
-## MCP Svelte Tools
-
-You have access to an MCP server with comprehensive Svelte 5 and SvelteKit documentation. Use it for **server-side patterns only**.
-
-### Available MCP Tools:
-
-#### 1. list-sections
-
-Discovers all available documentation sections. Returns a structured list with titles, use_cases, and paths.
-
-**ALWAYS call this FIRST** when asked about SvelteKit server topics.
-
-**Key tip:** Focus on server-related sections:
-
-- `hooks` - Server hooks (handle, handleFetch, handleError)
-- `load` - Load functions (+page.server.ts, +layout.server.ts)
-- `form-actions` - Form actions and progressive enhancement
-- `$env` - Environment variables (static/dynamic, private/public)
-- `+server` - API routes
-
-#### 2. get-documentation
-
-Retrieves full documentation content for specific sections.
-
-**Parameters:**
-
-- `section`: String or array of strings
-
-**Example:**
-
-```json
-{ "section": ["hooks", "load", "form-actions", "$env/static/private"] }
-```
-
-### Common Backend Documentation Sections:
-
-| Topic         | Sections to fetch                         |
-| ------------- | ----------------------------------------- |
-| API Routes    | +server, routing                          |
-| Server Load   | load, +page.server, +layout.server        |
-| Form Handling | form-actions, use:enhance                 |
-| Middleware    | hooks, handle, handleError                |
-| Environment   | $env/static/private, $env/dynamic/private |
-| Auth patterns | hooks, locals                             |
 
 ---
 
@@ -579,7 +537,7 @@ Analyzes specified files for ESLint issues.
 
 - ✅ After creating new `.ts` files in `src/core/`
 - ✅ After modifying existing backend code
-- ✅ After creating `+server.ts` or `+page.server.ts` files
+- ✅ After creating route handlers in `src/router/`
 - ✅ Before presenting final code to the user
 
 ---
@@ -617,8 +575,6 @@ bun run lint
 
 #### 3. bun run check
 
-Runs TypeScript and Svelte type checking.
-
 ```bash
 bun run check
 ```
@@ -636,116 +592,266 @@ bun run check
 2. Run `lint-files` MCP tool (quick validation)
 3. Run `bun run format` (apply formatting)
 4. Run `bun run lint` (final check)
-5. Run `bun run check` (TypeScript validation)
 ```
 
 ---
 
-## SvelteKit Server Integration
+## Hono + Zod OpenAPI Integration
 
-Connect your DDD layers to SvelteKit endpoints.
+Connect your DDD layers to Hono routes with automatic OpenAPI documentation.
 
-### Path Alias Setup:
+### 1. Define Routes with Zod Schemas
 
-Add this to `svelte.config.js` for clean imports:
+```typescript
+// src/router/download/routes.ts
 
-```javascript
-kit: {
-  alias: {
-    '$core': 'src/core',
-    '$core/*': 'src/core/*'
-  }
+import { createRoute } from "@hono/zod-openapi";
+import { z } from "zod";
+
+// Define schemas
+const EnqueueDownloadSchema = z.object({
+  url: z.string().url(),
+});
+
+const EnqueueDownloadResponseSchema = z.object({
+  downloadId: z.number(),
+  url: z.string(),
+  status: z.enum(["pending", "in_progress", "completed", "failed"]),
+});
+
+const ErrorSchema = z.object({
+  error: z.string(),
+});
+
+// Create route definitions
+export const enqueueDownloadRoute = createRoute({
+  method: "post",
+  path: "/",
+  tags: ["Downloads"],
+  summary: "Enqueue a new download",
+  request: {
+    body: {
+      content: {
+        "application/json": {
+          schema: EnqueueDownloadSchema,
+        },
+      },
+    },
+  },
+  responses: {
+    201: {
+      content: {
+        "application/json": {
+          schema: EnqueueDownloadResponseSchema,
+        },
+      },
+      description: "Download enqueued successfully",
+    },
+    400: {
+      description: "Invalid URL or unsupported platform",
+      content: {
+        "application/json": {
+          schema: ErrorSchema,
+        },
+      },
+    },
+  },
+});
+
+export type EnqueueDownloadRoute = typeof enqueueDownloadRoute;
+```
+
+### 2. Create Handlers with Use Case Injection
+
+```typescript
+// src/router/download/handlers.ts
+
+import { AppRouteHandler } from "@/types";
+import { EnqueueDownloadRoute } from "./routes";
+import { EnqueueDownload } from "@/core/application/download/use-cases/EnqueueDownload";
+
+interface DownloadUseCases {
+  enqueueDownload: EnqueueDownload;
+  // ... other use cases
 }
+
+export function createDownloadHandlers(useCases: DownloadUseCases) {
+  const enqueue: AppRouteHandler<EnqueueDownloadRoute> = async (c) => {
+    try {
+      const body = c.req.valid("json");
+      const result = await useCases.enqueueDownload.execute(body.url);
+      return c.json(result, 201);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      return c.json({ error: message }, 400);
+    }
+  };
+
+  return { enqueue };
+}
+
+// Optional: validation hook
+export const downloadValidationHook: AppRouteHook = (result, c) => {
+  if (!result.success) {
+    return c.json({ error: "Invalid request parameters" }, 400);
+  }
+};
 ```
 
-### API Route Pattern (`+server.ts`):
+### 3. Wire Everything Together
 
 ```typescript
-// src/routes/api/[entity]/+server.ts
+// src/router/download/index.ts
 
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { container } from '$core/config/container';
+import * as downloadHandlers from "./handlers";
+import * as downloadRoutes from "./routes";
+import { createRouter } from "@/server";
+import { dependencies } from "@/core/config/app-setup";
 
-export const GET: RequestHandler = async ({ params, url }) => {
-	try {
-		const result = await container.useCases.entity.getById.execute(params.id);
+// Create handlers with injected use cases
+const handlers = downloadHandlers.createDownloadHandlers({
+  enqueueDownload: dependencies.useCases.enqueueDownload,
+  // ... other use cases
+});
 
-		if (!result) {
-			throw error(404, 'Not found');
-		}
+// Create router with OpenAPI routes
+const router = createRouter()
+  .basePath("/api/downloads")
+  .openapi(
+    downloadRoutes.enqueueDownloadRoute,
+    handlers.enqueue,
+    downloadHandlers.downloadValidationHook
+  );
+  // ... register other routes
 
-		return json(result);
-	} catch (err) {
-		if (err instanceof Error) {
-			throw error(400, err.message);
-		}
-		throw err;
-	}
-};
-
-export const POST: RequestHandler = async ({ request }) => {
-	const body = await request.json();
-
-	try {
-		const result = await container.useCases.entity.create.execute(body);
-		return json(result, { status: 201 });
-	} catch (err) {
-		if (err instanceof Error) {
-			throw error(400, err.message);
-		}
-		throw err;
-	}
-};
+export default router;
 ```
 
-### Server Load Pattern (`+page.server.ts`):
+### Benefits:
+
+- ✅ **Type-safe**: Full TypeScript inference from Zod schemas
+- ✅ **Auto-documentation**: OpenAPI spec generated automatically
+- ✅ **Validation**: Request/response validation with Zod
+- ✅ **DDD-compliant**: Clean separation with use case injection
+- ✅ **Testable**: Easy to mock use cases for testing
+
+---
+
+## Testing Guidelines
+
+This project uses **Vitest** for unit testing. Follow these patterns for testing DDD layers.
+
+### Unit Testing Use Cases
+
+Test use cases in isolation by mocking repository dependencies:
 
 ```typescript
-// src/routes/users/[id]/+page.server.ts
+// src/core/application/user/CreateUserUseCase.spec.ts
 
-import { error } from '@sveltejs/kit';
-import type { PageServerLoad } from './$types';
-import { container } from '$core/config/container';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { CreateUserUseCase } from './CreateUserUseCase';
+import type { UserRepository } from '../../domain/user/UserRepository';
 
-export const load: PageServerLoad = async ({ params }) => {
-	const user = await container.useCases.user.getById.execute(params.id);
+describe('CreateUserUseCase', () => {
+  let mockRepository: UserRepository;
+  let useCase: CreateUserUseCase;
 
-	if (!user) {
-		throw error(404, 'User not found');
-	}
+  beforeEach(() => {
+    mockRepository = {
+      findByEmail: vi.fn(),
+      findById: vi.fn(),
+      save: vi.fn(),
+      delete: vi.fn(),
+    };
+    useCase = new CreateUserUseCase(mockRepository);
+  });
 
-	return { user };
-};
+  it('should create user successfully', async () => {
+    // Arrange
+    vi.mocked(mockRepository.findByEmail).mockResolvedValue(null);
+    vi.mocked(mockRepository.save).mockResolvedValue(undefined);
+
+    // Act
+    const result = await useCase.execute({
+      email: 'test@example.com',
+      name: 'Test User',
+    });
+
+    // Assert
+    expect(result.email).toBe('test@example.com');
+    expect(result.name).toBe('Test User');
+    expect(mockRepository.save).toHaveBeenCalledOnce();
+  });
+
+  it('should throw error if user already exists', async () => {
+    // Arrange
+    const existingUser = { /* mock user */ };
+    vi.mocked(mockRepository.findByEmail).mockResolvedValue(existingUser as any);
+
+    // Act & Assert
+    await expect(
+      useCase.execute({ email: 'test@example.com', name: 'Test' })
+    ).rejects.toThrow('User with this email already exists');
+    expect(mockRepository.save).not.toHaveBeenCalled();
+  });
+});
 ```
 
-### Form Actions Pattern:
+### Testing Domain Entities
+
+Test entity behavior and invariants:
 
 ```typescript
-// src/routes/users/new/+page.server.ts
+// src/core/domain/user/Email.spec.ts
 
-import { fail, redirect } from '@sveltejs/kit';
-import type { Actions } from './$types';
-import { container } from '$core/config/container';
+import { describe, it, expect } from 'vitest';
+import { Email } from './Email';
 
-export const actions: Actions = {
-	default: async ({ request }) => {
-		const formData = await request.formData();
-		const email = formData.get('email') as string;
-		const name = formData.get('name') as string;
+describe('Email Value Object', () => {
+  it('should create valid email', () => {
+    const email = Email.create('test@example.com');
+    expect(email.toString()).toBe('test@example.com');
+  });
 
-		try {
-			const user = await container.useCases.user.create.execute({ email, name });
-			throw redirect(303, `/users/${user.id}`);
-		} catch (err) {
-			if (err instanceof Error) {
-				return fail(400, { error: err.message, email, name });
-			}
-			throw err;
-		}
-	}
-};
+  it('should throw error for invalid email', () => {
+    expect(() => Email.create('invalid-email')).toThrow('Invalid email');
+  });
+
+  it('should compare emails correctly', () => {
+    const email1 = Email.create('test@example.com');
+    const email2 = Email.create('test@example.com');
+    const email3 = Email.create('other@example.com');
+
+    expect(email1.equals(email2)).toBe(true);
+    expect(email1.equals(email3)).toBe(false);
+  });
+});
 ```
+
+### Running Tests
+
+```bash
+# Run all tests
+bun run test:unit
+
+# Run specific test file
+bun run test:unit -- path/to/test.spec.ts
+
+# Run with coverage
+bun run test:unit -- --coverage
+
+# Watch mode
+bun run test:unit -- --watch
+```
+
+### Testing Best Practices
+
+- ✅ **Domain layer**: Test business logic and invariants
+- ✅ **Application layer**: Mock repositories, test use case orchestration
+- ✅ **Infrastructure layer**: Integration tests (optional, test DB queries)
+- ✅ **Follow AAA pattern**: Arrange → Act → Assert
+- ✅ **One assertion per test**: Keep tests focused and clear
+- ✅ **Descriptive names**: `should [expected behavior] when [condition]`
 
 ---
 
@@ -780,13 +886,15 @@ Before delivering any backend code, verify ALL items:
 
 - [ ] All dependencies are wired in container
 - [ ] Easy to swap implementations (in-memory ↔ database)
-- [ ] Exports use cases for SvelteKit consumption
+- [ ] Exports use cases for consumption
 
-### SvelteKit Integration
+### Hono Integration
 
-- [ ] API routes use container.useCases
-- [ ] Proper error handling with `error()` helper
-- [ ] TypeScript types from `$types` are used
+- [ ] Routes defined with `createRoute` and Zod schemas
+- [ ] Handlers created via factory function with use case injection
+- [ ] Router wired with `.openapi()` method
+- [ ] Proper error handling with typed responses
+- [ ] Validation hooks implemented where needed
 - [ ] `lint-files` returns no errors
 
 ### Final Verification

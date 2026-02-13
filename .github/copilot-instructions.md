@@ -2,39 +2,55 @@
 
 ## Project Overview
 
-SvelteKit application using **Svelte 5** with runes, **Tailwind CSS v4**, and **shadcn-ui-svelte** components. Backend follows **DDD architecture** in `src/core/`.
+Full-stack application with **SvelteKit** (frontend) and **Hono** (backend API). Frontend uses **Svelte 5** with runes, **Tailwind CSS v4**, and **shadcn-ui-svelte** components. Backend follows **DDD architecture** in `server/src/core/`.
 
 ## Tech Stack
 
 - **Runtime**: Bun (use `bun run` for all scripts)
-- **Framework**: SvelteKit with Svelte 5 (runes: `$state`, `$derived`, `$effect`)
-- **Styling**: Tailwind CSS v4 (CSS-based config in `src/routes/layout.css`, OKLCH colors)
-- **Components**: shadcn-ui-svelte (56 components in `src/lib/components/ui/`)
+- **Frontend Framework**: SvelteKit with Svelte 5 (runes: `$state`, `$derived`, `$effect`)
+- **Backend Framework**: Hono
+- **Styling**: Tailwind CSS v4 (CSS-based config in `client/src/routes/layout.css`, OKLCH colors)
+- **Components**: shadcn-ui-svelte (56 components in `client/src/lib/components/ui/`)
 - **Testing**: Vitest (browser + node) + Playwright E2E
 
 ## Key Commands
 
 ```bash
+# Client (SvelteKit)
+cd client
 bun run dev          # Start dev server
 bun run format       # Prettier + Tailwind class sorting
 bun run lint         # Prettier check + ESLint
 bun run check        # TypeScript + Svelte type checking
 bun run test:unit    # Vitest tests
 bun run test:e2e     # Playwright tests
+
+# Server (Hono)
+cd server
+bun run dev          # Start dev server
+bun run format       # Prettier formatting
+bun run lint         # Prettier check + ESLint
+bun run test:unit    # Vitest tests
 ```
 
 ## Architecture
 
-### Frontend (`src/routes/`, `src/lib/components/`)
+### Frontend (`client/src/routes/`, `client/src/lib/components/`)
 
 - Use Svelte 5 runes, NOT Svelte 4 syntax (`let count = $state(0)` not `let count = 0`)
 - Style with Tailwind classes using semantic colors (`bg-primary`, `text-foreground`)
 - Prefer shadcn-ui-svelte components from `$lib/components/ui/`
 
-### Backend DDD (`src/core/`)
+### SvelteKit Server Patterns
+
+- API routes: `client/src/routes/api/**/+server.ts`
+- Server load: `+page.server.ts`, `+layout.server.ts`
+- Form actions: Use `fail()` for validation errors, `redirect()` for success
+
+### Backend DDD (`server/src/core/`)
 
 ```
-src/core/
+server/src/core/
 ├── domain/         # Entities, Value Objects, Repository interfaces (NO external deps)
 ├── application/    # Use Cases with single execute() method
 ├── infrastructure/ # Concrete implementations (DB, APIs)
@@ -43,30 +59,33 @@ src/core/
 
 - Domain layer has zero external dependencies
 - Use Cases receive dependencies via constructor injection
-- SvelteKit routes consume use cases from `$core/config/container`
-
-### SvelteKit Server Patterns
-
-- API routes: `src/routes/api/**/+server.ts`
-- Server load: `+page.server.ts`, `+layout.server.ts`
-- Form actions: Use `fail()` for validation errors, `redirect()` for success
+- Hono routes consume use cases from `@/core/config/dependencies`
 
 ## Code Quality Workflow
 
-1. Write code following Svelte 5 / DDD patterns
-2. Validate with `svelte-autofixer` (MCP) for `.svelte` files
-3. Validate with `lint-files` (MCP) for all code files
-4. Run `bun run format` to apply formatting
-5. Run `bun run lint && bun run check` before delivery
+1. Write code following DDD patterns
+2. Validate with `lint-files` (MCP) for all code files
+3. Run `bun run format` to apply formatting
+4. Run `bun run lint && bun run check` before delivery
 
 ## Project-Specific Conventions
 
-- **Tailwind v4**: No `tailwind.config.js` — theme in `src/routes/layout.css` with `@theme inline`
-- **Path aliases**: `$lib` → `src/lib`, `@/core` → `src/core` (configured in `svelte.config.js`)
+### Client (SvelteKit)
+
+- **Tailwind v4**: No `tailwind.config.js` — theme in `client/src/routes/layout.css` with `@theme inline`
+- **Path aliases**: `$lib` → `client/src/lib` (configured in `svelte.config.js`)
 - **Prettier**: Uses tabs, single quotes, no trailing commas (see `.prettierrc`)
-- **Components**: All UI in `src/lib/components/ui/`, utilities in `src/lib/utils.ts`
+- **Components**: All UI in `client/src/lib/components/ui/`, utilities in `client/src/lib/utils.ts`
+
+### Server (Hono)
+
+- **Path aliases**: `@/core` → `server/src/core` (configured in `tsconfig.json`)
+- **Prettier**: Uses tabs, single quotes, no trailing commas (see `.prettierrc`)
+- **Router**: All routes in `server/src/router/`, grouped by feature
 
 ## Environment Variables
+
+### SvelteKit (Client)
 
 SvelteKit provides type-safe environment variable access:
 
@@ -84,6 +103,12 @@ import { env } from '$env/dynamic/public';
 - **Dynamic**: Read at runtime, useful for different environments
 - Define variables in `.env`, `.env.local`, `.env.[mode]`
 
+### Hono (Server)
+
+- Use `process.env` for environment variables
+- Define variables in `.env` file in server directory
+
+
 ## Testing
 
 ### Unit Testing (Vitest)
@@ -93,8 +118,8 @@ import { env } from '$env/dynamic/public';
 - Coverage: `bun run test:unit -- --coverage`
 - Test structure patterns:
   - **Unit**: Pure functions, utilities, domain models
-  - **Component**: Svelte components with `@testing-library/svelte`
-  - **Integration**: Use Cases, repositories with mocks
+  - **Component** (client): Svelte components with `@testing-library/svelte`
+  - **Integration** (server): Use Cases, repositories with mocks
 
 #### Test Structure
 
@@ -156,8 +181,8 @@ mcp_vitest_analyze_coverage({
 
 ### E2E Testing (Playwright)
 
-- Test files: `e2e/**/*.test.ts`
-- Run all E2E: `bun run test:e2e`
+- Test files: `client/e2e/**/*.spec.ts`
+- Run all E2E: `cd client && bun run test:e2e`
 - UI mode: `bun run test:e2e -- --ui`
 - Debug mode: `bun run test:e2e -- --debug`
 
