@@ -13,7 +13,7 @@
     useExecuteYtDlpCommandStream,
     type YtDlpStreamEvent
   } from '$lib/queries';
-    import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
+  import ScrollArea from '$lib/components/ui/scroll-area/scroll-area.svelte';
 
   let url = $state(
     'https://music.youtube.com/playlist?list=OLAK5uy_kdLOnnGvE3A99ne7nhjnmiytoVAKroUys'
@@ -26,6 +26,16 @@
   let isCopying = $state(false);
   const executeMutation = useExecuteYtDlpCommand();
   const streamCommand = useExecuteYtDlpCommandStream();
+
+  // Reference to the scroll container
+  let scrollContainer: HTMLDivElement | null = $state(null);
+
+  // Auto-scroll to bottom when new events arrive
+  $effect(() => {
+    if (streamCommand.events.length > 0 && scrollContainer) {
+      scrollContainer.scrollTop = scrollContainer.scrollHeight;
+    }
+  });
 
   function executeCommand() {
     if (!command.trim()) return;
@@ -281,32 +291,34 @@
 
     <!-- Streaming Events (only in streaming mode) -->
     {#if useStreaming && streamCommand.events.length > 0}
-   
       <div class="space-y-2">
         <Label>Event Stream</Label>
         <ScrollArea
-          class="h-160 space-y-1 overflow-y-auto rounded-md border bg-muted p-3 font-mono text-xs"
+          bind:viewportRef={scrollContainer}
+          class="h-160 space-y-1 rounded-md border bg-muted p-3 font-mono text-xs"
         >
           {#each streamCommand.events as event, i (i)}
-            <div class="flex flex-col items-start gap-2">
+            <div class="flex max-w-full min-w-0 flex-col items-start gap-2">
               {#if event.type === 'start'}
                 <Badge variant="outline" class="shrink-0">▶️ start</Badge>
-                <span class="text-muted-foreground">{event.command.join(' ')}</span>
+                <span class="break-all text-muted-foreground">{event.command.join(' ')}</span>
               {:else if event.type === 'stdout'}
                 <Badge variant="outline" class="shrink-0">📤 stdout</Badge>
-                <pre class="whitespace-pre-wrap">{event.data}</pre>
+                <pre class="max-w-full break-all">{JSON.stringify(JSON.parse(event.data), null, 1)}</pre>
               {:else if event.type === 'stderr'}
                 <Badge variant="secondary" class="shrink-0">⚠️ stderr</Badge>
-                <pre class="whitespace-pre-wrap text-muted-foreground">{event.data}</pre>
+                <pre class="max-w-full break-all text-muted-foreground">{event.data}</pre>
               {:else if event.type === 'progress'}
                 <Badge variant="default" class="shrink-0">📊 progress</Badge>
-                <span>{event.percent?.toFixed(1)}% {event.eta ? `(ETA: ${event.eta})` : ''}</span>
+                <span class="break-all"
+                  >{event.percent?.toFixed(1)}% {event.eta ? `(ETA: ${event.eta})` : ''}</span
+                >
               {:else if event.type === 'complete'}
                 <Badge variant="default" class="shrink-0">✅ complete</Badge>
                 <span>Exit code: {event.exitCode}</span>
               {:else if event.type === 'error'}
                 <Badge variant="destructive" class="shrink-0">❌ error</Badge>
-                <span class="text-destructive">{event.message}</span>
+                <span class="break-all text-destructive">{event.message}</span>
               {/if}
             </div>
           {/each}
@@ -322,7 +334,7 @@
     {/if}
 
     <!-- Loading State -->
-    {#if isExecuting()}
+    {#if isExecuting() && !useStreaming}
       <div class="space-y-2">
         <Skeleton class="h-4 w-24" />
         <Skeleton class="h-50 w-full" />
@@ -330,7 +342,7 @@
     {/if}
 
     <!-- Output Display -->
-    {#if hasOutput()}
+    {#if hasOutput() && !useStreaming}
       <div class="flex flex-1 flex-col gap-4 overflow-hidden">
         <div class="flex items-center gap-2">
           <h2 class="text-lg font-semibold">Response</h2>

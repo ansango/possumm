@@ -2,7 +2,7 @@ import { DownloadRepository } from '@/core/domain/download/repositories/download
 import { MediaRepository } from '@/core/domain/media/repositories/media-repository';
 import type { PinoLogger } from 'hono-pino';
 import { rm } from 'fs/promises';
-import { exists } from 'fs/promises';
+import { existsSync as exists } from 'fs';
 
 /**
  * Result structure for cleanup operation.

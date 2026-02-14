@@ -1,29 +1,14 @@
 import { spawn } from 'bun';
 import { Provider } from '@/core/domain/media/entities/media';
 import type { PinoLogger } from 'hono-pino';
+import { writeFile } from 'fs';
 
 /**
  * Metadata result from yt-dlp extraction.
  *
  * All fields are nullable to support incomplete metadata from various sources.
  */
-interface MetadataResult {
-  title: string | null;
-  artist: string | null;
-  album: string | null;
-  album_artist: string | null;
-  release_year: string | null;
-  upload_date: string | null;
-  thumbnail: string | null;
-  duration: number | null;
-  id: string | null;
-  uploader: string | null;
-  /** Type marker: 'playlist' for albums, undefined for tracks */
-  _type?: string;
-  /** Array of tracks for playlists/albums */
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  entries?: any[];
-}
+type MetadataResult = any; // Replace with actual type definition based on yt-dlp output structure
 
 /**
  * Service for extracting media metadata using yt-dlp.
@@ -100,122 +85,304 @@ export class MetadataExtractor {
    * // }
    * ```
    */
-  async extract(url: string, provider: Provider): Promise<MetadataResult> {
+  async extract(url: string, provider: Provider): Promise<MetadataResult | null> {
     this.logger.info(`Extracting metadata from URL: ${url}, provider=${provider}`);
 
-    try {
-      const cmd = [
-        'yt-dlp',
-        '--js-runtime',
-        'bun',
-        '--skip-download',
-        '--dump-json',
-        '--no-warnings',
-        '--add-metadata',
-        '--parse-metadata',
-        '%(artist|uploader)s:%(artist)s',
-        '--parse-metadata',
-        '%(album|playlist_title)s:%(album)s',
-        url
-      ];
-      this.logger.info(`Spawning yt-dlp process: ${cmd.join(' ')}`);
+    const youtubeExtractor = new MetadataExtractorYoutube(this.logger);
+    const bandcampExtractor = new MetadataExtractorBandcamp(this.logger);
 
-      const process = spawn({
-        cmd,
-        stdout: 'pipe',
-        stderr: 'pipe'
-      });
+    const extractors = {
+      youtube: youtubeExtractor,
+      bandcamp: bandcampExtractor
+    };
 
-      this.logger.info(`yt-dlp process spawned with PID: ${process.pid}`);
+    const extractor = extractors[provider];
+    const type = extractor.getMediaType(url);
 
-      // Capture both streams before checking exit code
-      this.logger.info('Reading stdout and stderr streams...');
-      const [output, errorOutput] = await Promise.all([
-        new Response(process.stdout).text(),
-        new Response(process.stderr).text()
-      ]);
-
-      this.logger.info(
-        `Streams captured - stdout length: ${output.length}, stderr length: ${errorOutput.length}`
+    if (!type) {
+      this.logger.error(
+        `Unable to determine media type from URL: ${url} for provider: ${provider}`
       );
-      if (errorOutput.length > 0) {
-        this.logger.warn(
-          `stderr output: ${errorOutput.substring(0, 500)}${errorOutput.length > 500 ? '...' : ''}`
-        );
-      }
+      throw new Error(`Unable to determine media type from URL: ${url} for provider: ${provider}`);
+    }
 
-      const exitCode = await process.exited;
-      this.logger.info(`Process exited with code: ${exitCode}`);
+    try {
+      const cmd = extractor.getArgs(url, type);
+      const [result, error] = await this.spawnProcess(cmd);
+      const data = extractor.getMappedOutput(type, result);
 
-      if (exitCode !== 0) {
-        this.logger.error(
-          `yt-dlp metadata extraction failed: exitCode=${exitCode}, error=${errorOutput}`
-        );
-        throw new Error(`Failed to extract metadata: ${errorOutput}`);
-      }
+      // this.logger.info(
+      //   `Streams captured - stdout length: ${output.length}, stderr length: ${errorOutput.length}`
+      // );
+      // if (errorOutput.length > 0) {
+      //   this.logger.warn(
+      //     `stderr output: ${errorOutput.substring(0, 500)}${errorOutput.length > 500 ? '...' : ''}`
+      //   );
+      // }
+
+      //const exitCode = await process.exited;
+      //this.logger.info(`Process exited with code: ${exitCode}`);
+
+      // if (exitCode !== 0) {
+      //   this.logger.error(
+      //     `yt-dlp metadata extraction failed: exitCode=${exitCode}, error=${errorOutput}`
+      //   );
+      //   throw new Error(`Failed to extract metadata: ${errorOutput}`);
+      // }
 
       // Parse JSON lines
-      const lines = output
-        .trim()
-        .split('\n')
-        .filter((line) => line.length > 0);
+      // const lines = output
+      //   .trim()
+      //   .split('\n')
+      //   .filter((line) => line.length > 0);
 
-      if (lines.length === 0) {
-        throw new Error('No metadata returned from yt-dlp');
-      }
+      // if (lines.length === 0) {
+      //   throw new Error('No metadata returned from yt-dlp');
+      // }
 
       // Parse first line as main metadata
-      let metadata: MetadataResult;
-      try {
-        metadata = JSON.parse(lines[0]);
-      } catch (parseError) {
-        this.logger.error(`Failed to parse metadata JSON: ${parseError}, line=${lines[0]}`);
-        throw new Error('Failed to parse metadata JSON');
-      }
+      // let metadata: MetadataResult;
 
-      // If there are multiple lines, it's likely a playlist
-      if (lines.length > 1) {
-        metadata.entries = [];
-        for (const line of lines) {
-          try {
-            const entry = JSON.parse(line);
-            metadata.entries.push(entry);
-          } catch {
-            this.logger.warn(`Failed to parse playlist entry, skipping: ${line}`);
-          }
-        }
-        metadata._type = 'playlist';
-      }
+      // this.logger.info(`output result: ${output}`);
+      //this.logger.info(`Parsing metadata JSON from first line: ${lines[0].substring(0, 500)}...`);
 
-      // Log warnings for incomplete metadata
-      if (!metadata.title) {
-        this.logger.warn(`Metadata missing title for URL: ${url}`);
-      }
-      if (!metadata.artist && !metadata.uploader) {
-        this.logger.warn(`Metadata missing artist/uploader for URL: ${url}`);
-      }
+      // try {
+      //   metadata = JSON.parse(lines[0]);
+      // } catch (parseError) {
+      //   this.logger.error(`Failed to parse metadata JSON: ${parseError}, line=${lines[0]}`);
+      //   throw new Error('Failed to parse metadata JSON');
+      // }
 
-      this.logger.info(
-        `Metadata extracted successfully: title=${metadata.title}, artist=${metadata.artist || metadata.uploader}, type=${metadata._type || 'single'}`
-      );
+      // // If there are multiple lines, it's likely a playlist
+      // if (lines.length > 1) {
+      //   metadata.entries = [];
+      //   for (const line of lines) {
+      //     try {
+      //       const entry = JSON.parse(line);
+      //       metadata.entries.push(entry);
+      //     } catch {
+      //       this.logger.warn(`Failed to parse playlist entry, skipping: ${line}`);
+      //     }
+      //   }
+      //   metadata._type = 'playlist';
+      // }
 
-      return {
-        title: metadata.title || null,
-        artist: metadata.artist || metadata.uploader || null,
-        album: metadata.album || null,
-        album_artist: metadata.album_artist || null,
-        release_year: metadata.release_year || null,
-        upload_date: metadata.upload_date || null,
-        thumbnail: metadata.thumbnail || null,
-        duration: metadata.duration || null,
-        id: metadata.id || null,
-        uploader: metadata.uploader || null,
-        _type: metadata._type,
-        entries: metadata.entries
-      };
+      // // Log warnings for incomplete metadata
+      // if (!metadata.title) {
+      //   this.logger.warn(`Metadata missing title for URL: ${url}`);
+      // }
+      // if (!metadata.artist && !metadata.uploader) {
+      //   this.logger.warn(`Metadata missing artist/uploader for URL: ${url}`);
+      // }
+
+      // this.logger.info(
+      //   `Metadata extracted successfully: title=${metadata.title}, artist=${metadata.artist || metadata.uploader}, type=${metadata._type || 'single'}`
+      // );
+
+      // return metadata;
+      return null;
     } catch (error) {
       this.logger.error(`Error extracting metadata from ${url}: ${error}`);
       throw error;
+    }
+  }
+
+  async spawnProcess(cmd: string[]) {
+    const process = spawn({
+      cmd,
+      stdout: 'pipe',
+      stderr: 'pipe'
+    });
+
+    this.logger.info(`Spawning process: ${cmd.join(' ')}`);
+    this.logger.info(`Process spawned with PID: ${process.pid}`);
+
+    const [result, error] = await Promise.all([
+      new Response(process.stdout).text(),
+      new Response(process.stderr).text()
+    ]);
+
+    this.logger.info(
+      `Streams captured - stdout length: ${result.length}, stderr length: ${error.length}`
+    );
+    if (error.length > 0) {
+      this.logger.warn(
+        `stderr output: ${error.substring(0, 500)}${error.length > 500 ? '...' : ''}`
+      );
+    }
+
+    const exitCode = await process.exited;
+    this.logger.info(`Process exited with code: ${exitCode}`);
+
+    if (exitCode !== 0) {
+      this.logger.error(`Process failed: exitCode=${exitCode}, error=${error}`);
+      throw new Error(`Process failed: ${error}`);
+    }
+
+    return [result, error];
+  }
+}
+
+interface Extractor {
+  getMediaType(url: string): 'track' | 'album' | null;
+  getArgs(url: string, media: 'track' | 'album'): string[];
+  getMappedOutput(type: 'track' | 'album', result: string): MetadataResult;
+}
+
+const cmdCommandArgs = ['yt-dlp', '--js-runtime', 'bun', '--skip-download'];
+
+/**
+ * Extractor implementation for YouTube Music using yt-dlp.
+ *
+ * Handles both single tracks and playlists (albums) by analyzing the URL.
+ * Provides appropriate command arguments for yt-dlp based on media type.
+ */
+
+class MetadataExtractorYoutube implements Extractor {
+  albumArgs = [...cmdCommandArgs, '--dump-single-json', '--no-warnings'];
+  trackArgs = [...cmdCommandArgs, '--dump-single-json', '--no-warnings'];
+
+  constructor(private readonly logger: PinoLogger) {}
+
+  getMediaType(url: string) {
+    if (url.includes('playlist')) {
+      return 'album';
+    }
+
+    if (url.includes('watch')) {
+      return 'track';
+    }
+    this.logger.warn(`Unable to determine media type from URL: ${url}'`);
+    return null;
+  }
+
+  getArgs(url: string, media: 'track' | 'album'): string[] {
+    return {
+      track: [...this.trackArgs, url],
+      album: [...this.albumArgs, url]
+    }[media];
+  }
+
+  getMappedOutput(type: 'track' | 'album', result: string): MetadataResult {
+    return {
+      track: this.getMappedTrackOutput(result),
+      album: this.getMappedAlbumOutput(result)
+    }[type];
+  }
+
+  getMappedAlbumOutput(result: string): MetadataResult {
+    
+    writeFile('yt-album-metadata.json', result, (err) => {
+      if (err) {
+        this.logger.error(`Failed to write album metadata to file: ${err}`);
+      } else {
+        this.logger.info('Album metadata written to yt-album-metadata.json');
+      }
+    });
+
+    try {
+      const {
+        id,
+        title: album,
+        entries
+      } = JSON.parse(result) as {
+        id: string;
+        title: string;
+        entries: {
+          title: string;
+          duration: number;
+          url: string;
+          uploader: string;
+          thumbnails: { url: string; width: number; height: number }[];
+        }[];
+      };
+
+      const tracks = entries.map((entry, index) => ({
+        title: entry.title,
+        duration: entry.duration,
+        url: entry.url,
+        artist: entry.uploader,
+        thumbnail: entry.thumbnails?.[0]?.url || null,
+        playlist_index: index + 1
+      }));
+
+      const artist =
+        tracks[0]?.artist.replaceAll('-', '').replaceAll('Official', '').trim() ?? null;
+
+      const data = {
+        id,
+        album: album.replaceAll('-', '').replaceAll('Album', '').trim(),
+        artist,
+        type: 'album',
+        tracks
+      };
+      console.log('Parsed YT album metadata:', data);
+      // replace '-' and 'Album'
+      return data;
+    } catch (parseError) {
+      this.logger.error(`Failed to parse album metadata JSON: ${parseError}, result=${result}`);
+      throw new Error('Failed to parse album metadata JSON');
+    }
+  }
+
+  getMappedTrackOutput(result: string): MetadataResult {
+    try {
+      const metadata = JSON.parse(result);
+      return metadata;
+    } catch (parseError) {
+      this.logger.error(`Failed to parse track metadata JSON: ${parseError}, result=${result}`);
+      throw new Error('Failed to parse track metadata JSON');
+    }
+  }
+}
+class MetadataExtractorBandcamp implements Extractor {
+  albumArgs = [...cmdCommandArgs, '--dump-single-json', '--no-warnings', '--flat-playlist'];
+  trackArgs = [...cmdCommandArgs, '--dump-single-json', '--no-warnings'];
+  constructor(private readonly logger: PinoLogger) {}
+  getMediaType(url: string) {
+    if (url.includes('/album/')) {
+      return 'album';
+    }
+    if (url.includes('/track/')) {
+      return 'track';
+    }
+
+    // Default to track if we can't determine
+    this.logger.warn(`Unable to determine media type from URL: ${url}`);
+    return null;
+  }
+
+  getArgs(url: string, media: 'track' | 'album'): string[] {
+    return {
+      track: [...this.trackArgs, url],
+      album: [...this.albumArgs, url]
+    }[media];
+  }
+
+  getMappedOutput(type: 'track' | 'album', result: string): MetadataResult {
+    return {
+      track: this.getMappedTrackOutput(result),
+      album: this.getMappedAlbumOutput(result)
+    }[type];
+  }
+
+  getMappedAlbumOutput(result: string): MetadataResult {
+    try {
+      const metadata = JSON.parse(result);
+      return metadata;
+    } catch (parseError) {
+      this.logger.error(`Failed to parse album metadata JSON: ${parseError}, result=${result}`);
+      throw new Error('Failed to parse album metadata JSON');
+    }
+  }
+
+  getMappedTrackOutput(result: string): MetadataResult {
+    try {
+      const metadata = JSON.parse(result);
+      return metadata;
+    } catch (parseError) {
+      this.logger.error(`Failed to parse track metadata JSON: ${parseError}, result=${result}`);
+      throw new Error('Failed to parse track metadata JSON');
     }
   }
 }
